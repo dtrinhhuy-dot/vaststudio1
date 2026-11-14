@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VAST STUDIO — Trang Quản Trị Cửa Hàng Thời Trang</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23000'/><text x='50' y='68' font-size='60' font-family='sans-serif' font-weight='900' fill='%23fff' text-anchor='middle'>V</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="#" class="brand-badge" onclick="navigateToTab('dashboard')">
+                    <div class="brand-symbol">V</div>
+                    <div class="brand-details">
+                        <span class="brand-name">VAST STUDIO</span>
+                        <span class="brand-role">Admin Portal</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="store-status-pill">
+                <div class="status-dot-container">
+                    <span class="status-live-dot"></span>
+                    <span>Cửa hàng: Đang mở</span>
+                </div>
+                <span class="badge badge-success">Live</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Menu Chính</div>
+                <div class="nav-item active" data-tab="dashboard" onclick="navigateToTab('dashboard')">
+                    <div class="nav-item-left">
+                        <span class="nav-icon" data-icon="dashboard"></span>
+                        <span>Tổng quan</span>
+                    </div>
+                </div>
+
+                <div class="nav-item" data-tab="products" onclick="navigateToTab('products')">
+                    <div class="nav-item-left">
+                        <span class="nav-icon" data-icon="products"></span>
+                        <span>Sản phẩm</span>
+                    </div>
+                    <span class="nav-badge" id="sidebar-products-count">8</span>
+                </div>
+
+                <div class="nav-item" data-tab="orders" onclick="navigateToTab('orders')">
+                    <div class="nav-item-left">
+                        <span class="nav-icon" data-icon="orders"></span>
+                        <span>Đơn hàng</span>
+                    </div>
+                    <span class="nav-badge" id="sidebar-pending-orders">2</span>
+                </div>
+
+                <div class="nav-item" data-tab="collections" onclick="navigateToTab('collections')">
+                    <div class="nav-item-left">
+                        <span class="nav-icon" data-icon="collections"></span>
+                        <span>Bộ sưu tập</span>
+                    </div>
+                </div>
+
+                <div class="nav-section-title">Khách hàng & Bán hàng</div>
+                <div class="nav-item" data-tab="customers" onclick="navigateToTab('customers')">
+                    <div class="nav-item-left">
+                        <span class="nav-icon" data-icon="customers"></span>
+                        <span>Khách hàng</span>
+                    </div>
+                </div>
+
+                <div class="nav-item" data-tab="coupons" onclick="navigateToTab('coupons')">
+                    <div class="nav-item-left">
+                        <span class="nav-icon" data-icon="coupons"></span>
+                        <span>Khuyến mãi</span>
+                    </div>
+                </div>
+
+                <div class="nav-section-title">Hệ thống</div>
+                <div class="nav-item" data-tab="settings" onclick="navigateToTab('settings')">
+                    <div class="nav-item-left">
+                        <span class="nav-icon" data-icon="settings"></span>
+                        <span>Cài đặt Shop</span>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="admin-profile">
+                    <div class="admin-avatar">VS</div>
+                    <div class="admin-meta">
+                        <span class="admin-name">Admin VAST</span>
+                        <span class="admin-role-tag">Super Admin</span>
+                    </div>
+                </div>
+                <button class="btn-icon-sm" title="Khôi phục dữ liệu mẫu" onclick="confirmResetData()">
+                    <span data-icon="refresh"></span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN VIEWPORT -->
+        <div class="main-wrapper">
+            <!-- TOPBAR -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="mobile-toggle" id="mobile-toggle-btn" onclick="toggleSidebar()">
+                        <span data-icon="menu"></span>
+                    </button>
+                    <div class="page-title-box">
+                        <h1 id="topbar-title">Tổng quan kinh doanh</h1>
+                        <p id="topbar-date">Hôm nay: Thứ Bảy, 14/11/2026</p>
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="search-box">
+                        <span data-icon="search"></span>
+                        <input type="text" id="global-search-input" placeholder="Tìm kiếm nhanh (sản phẩm, mã đơn, khách)..." onkeyup="handleGlobalSearch(event)">
+                    </div>
+
+                    <button class="icon-btn" id="theme-toggle-btn" title="Đổi giao diện Sáng / Tối" onclick="toggleTheme()">
+                        <span data-icon="sun" id="theme-icon"></span>
+                    </button>
+
+                    <button class="icon-btn" title="Thông báo mới" onclick="toggleNotificationsModal()">
+                        <span data-icon="bell"></span>
+                        <span class="notif-badge"></span>
+                    </button>
+
+                    <button class="btn-secondary" onclick="openStorefrontDemo()">
+                        <span data-icon="store"></span>
+                        <span>Xem Cửa hàng</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- CONTENT BODY -->
+            <main class="content-area">
+                <!-- ================= TAB 1: DASHBOARD ================= -->
+                <section class="tab-pane active" id="tab-dashboard">
+                    <!-- Stat Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Doanh thu tháng này</span>
+                                <div class="stat-icon-wrap" style="color: #10b981;">
+                                    <span data-icon="dollarSign"></span>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="stat-revenue">4,952,500 ₫</div>
+                            <div class="stat-footer">
+                                <span class="trend-badge trend-up">
+                                    <span data-icon="trendingUp"></span> +18.4%
+                                </span>
+                                <span style="color: var(--text-muted);">so với tháng trước</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Tổng đơn hàng</span>
+                                <div class="stat-icon-wrap" style="color: #3b82f6;">
+                                    <span data-icon="orders"></span>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="stat-orders-count">5 đơn</div>
+                            <div class="stat-footer">
+                                <span class="trend-badge trend-up">
+                                    <span data-icon="trendingUp"></span> +12.5%
+                                </span>
+                                <span id="stat-pending-sub" style="color: var(--text-muted);">2 đơn chờ xử lý</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Sản phẩm trong kho</span>
+                                <div class="stat-icon-wrap" style="color: #f59e0b;">
+                                    <span data-icon="products"></span>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="stat-inventory-count">159 cái</div>
+                            <div class="stat-footer">
+                                <span class="badge badge-warning" id="stat-low-stock-count">2 mẫu sắp hết</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Khách hàng thành viên</span>
+                                <div class="stat-icon-wrap" style="color: #8b5cf6;">
+                                    <span data-icon="customers"></span>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="stat-customers-count">5 người</div>
+                            <div class="stat-footer">
+                                <span class="trend-badge trend-up">
+                                    <span data-icon="trendingUp"></span> 2 VIP Black Card
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart & Top Selling Grid -->
+                    <div class="dashboard-grid-2">
+                        <!-- Revenue Chart Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <h3 class="card-title">Biểu đồ doanh thu gần đây</h3>
+                                    <p class="card-subtitle">Thống kê doanh số bán quần áo theo ngày (VNĐ)</p>
+                                </div>
+                                <div class="chart-controls">
+                                    <button class="chart-btn active" id="btn-chart-7d" onclick="switchChartRange(7)">7 ngày</button>
+                                    <button class="chart-btn" id="btn-chart-30d" onclick="switchChartRange(30)">30 ngày</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container" id="revenue-chart-container">
+                                    <!-- Rendered dynamically by app.js -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Top Selling Products -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <h3 class="card-title">Top Bán Chạy VAST</h3>
+                                    <p class="card-subtitle">Các mẫu thời trang được ưa chuộng nhất</p>
+                                </div>
+                                <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="navigateToTab('products')">
+                                    Xem tất cả
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="top-items-list" id="dashboard-top-products">
+                                    <!-- Populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Orders Section -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Đơn hàng mới nhất</h3>
+                                <p class="card-subtitle">Danh sách các đơn vừa đặt tại VAST STUDIO</p>
+                            </div>
+                            <button class="btn-primary" style="padding: 6px 14px; font-size: 0.8rem;" onclick="navigateToTab('orders')">
+                                Quản lý đơn hàng
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="vast-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mã Đơn</th>
+                                        <th>Khách Hàng</th>
+                                        <th>Sản Phẩm</th>
+                                        <th>Tổng Tiền</th>
+                                        <th>Thanh Toán</th>
+                                        <th>Trạng Thái</th>
+                                        <th>Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboard-recent-orders">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= TAB 2: PRODUCTS ================= -->
+                <section class="tab-pane" id="tab-products">
+                    <div class="table-toolbar">
+                        <div class="toolbar-filters">
+                            <input type="text" id="product-search-input" class="filter-select" style="min-width: 240px;" placeholder="Tìm theo tên sản phẩm, SKU..." oninput="renderProductsTable()">
+                            
+                            <select id="product-category-filter" class="filter-select" onchange="renderProductsTable()">
+                                <option value="all">Tất cả danh mục</option>
+                                <option value="Áo thun">Áo thun</option>
+                                <option value="Áo sơ mi">Áo sơ mi</option>
+                                <option value="Hoodie & Sweater">Hoodie & Sweater</option>
+                                <option value="Quần">Quần (Jeans / Cargo)</option>
+                                <option value="Áo khoác">Áo khoác</option>
+                                <option value="Phụ kiện">Phụ kiện</option>
+                            </select>
+
+                            <select id="product-stock-filter" class="filter-select" onchange="renderProductsTable()">
+                                <option value="all">Tất cả trạng thái kho</option>
+                                <option value="in_stock">Còn hàng (> 10)</option>
+                                <option value="low_stock">Sắp hết hàng (≤ 10)</option>
+                                <option value="out_of_stock">Hết hàng (0)</option>
+                            </select>
+
+                            <select id="product-sort-filter" class="filter-select" onchange="renderProductsTable()">
+                                <option value="newest">Mới nhất</option>
+                                <option value="price_asc">Giá tăng dần</option>
+                                <option value="price_desc">Giá giảm dần</option>
+                                <option value="stock_desc">Tồn kho nhiều nhất</option>
+                                <option value="sales_desc">Bán chạy nhất</option>
+                            </select>
+                        </div>
+
+                        <button class="btn-primary" onclick="openAddProductModal()">
+                            <span data-icon="plus"></span>
+                            <span>Thêm Sản Phẩm Mới</span>
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="vast-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sản Phẩm</th>
+                                        <th>Danh Mục</th>
+                                        <th>Bộ Sưu Tập</th>
+                                        <th>Giá Bán</th>
+                                        <th>Size / Màu</th>
+                                        <th>Tồn Kho</th>
+                                        <th>Đã Bán</th>
+                                        <th>Trạng Thái</th>
+                                        <th style="text-align: right;">Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="products-table-body">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= TAB 3: ORDERS ================= -->
+                <section class="tab-pane" id="tab-orders">
+                    <div class="table-toolbar">
+                        <div class="filter-pills" id="order-status-tabs">
+                            <button class="filter-pill active" onclick="filterOrdersByStatus('all')">Tất cả (<span id="count-order-all">5</span>)</button>
+                            <button class="filter-pill" onclick="filterOrdersByStatus('pending')">Chờ xác nhận (<span id="count-order-pending">1</span>)</button>
+                            <button class="filter-pill" onclick="filterOrdersByStatus('processing')">Đang đóng gói (<span id="count-order-processing">1</span>)</button>
+                            <button class="filter-pill" onclick="filterOrdersByStatus('shipping')">Đang giao (<span id="count-order-shipping">1</span>)</button>
+                            <button class="filter-pill" onclick="filterOrdersByStatus('completed')">Hoàn thành (<span id="count-order-completed">1</span>)</button>
+                            <button class="filter-pill" onclick="filterOrdersByStatus('cancelled')">Đã hủy (<span id="count-order-cancelled">1</span>)</button>
+                        </div>
+
+                        <div class="toolbar-filters">
+                            <input type="text" id="order-search-input" class="filter-select" placeholder="Tìm mã đơn, tên khách, SĐT..." oninput="renderOrdersTable()">
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="vast-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mã Đơn</th>
+                                        <th>Thời Gian</th>
+                                        <th>Khách Hàng</th>
+                                        <th>Sản Phẩm Đặt</th>
+                                        <th>Tổng Tiền</th>
+                                        <th>Thanh Toán</th>
+                                        <th>Trạng Thái Đơn</th>
+                                        <th style="text-align: right;">Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orders-table-body">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= TAB 4: COLLECTIONS ================= -->
+                <section class="tab-pane" id="tab-collections">
+                    <div class="table-toolbar">
+                        <div>
+                            <h2 style="font-size: 1.15rem; font-weight: 700; font-family: var(--font-heading);">Bộ Sưu Tập Thời Trang VAST STUDIO</h2>
+                            <p style="font-size: 0.78rem; color: var(--text-muted);">Quản lý các campaign và lookbook theo mùa</p>
+                        </div>
+                        <button class="btn-primary" onclick="openAddCollectionModal()">
+                            <span data-icon="plus"></span>
+                            <span>Tạo Bộ Sưu Tập Mới</span>
+                        </button>
+                    </div>
+
+                    <div class="collections-grid" id="collections-grid-container">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <!-- ================= TAB 5: CUSTOMERS ================= -->
+                <section class="tab-pane" id="tab-customers">
+                    <div class="table-toolbar">
+                        <div class="toolbar-filters">
+                            <input type="text" id="customer-search-input" class="filter-select" placeholder="Tìm tên khách, email, SĐT..." oninput="renderCustomersTable()">
+                            <select id="customer-tier-filter" class="filter-select" onchange="renderCustomersTable()">
+                                <option value="all">Tất cả hạng thành viên</option>
+                                <option value="VIP Black Card">VIP Black Card</option>
+                                <option value="Gold Member">Gold Member</option>
+                                <option value="Silver Member">Silver Member</option>
+                                <option value="Standard">Standard</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="vast-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mã KH</th>
+                                        <th>Tên Khách Hàng</th>
+                                        <th>Liên Hệ</th>
+                                        <th>Khu Vực</th>
+                                        <th>Hạng Thành Viên</th>
+                                        <th>Số Đơn</th>
+                                        <th>Tổng Chi Tiêu</th>
+                                        <th>Lần Mua Cuối</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customers-table-body">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= TAB 6: COUPONS ================= -->
+                <section class="tab-pane" id="tab-coupons">
+                    <div class="table-toolbar">
+                        <div>
+                            <h2 style="font-size: 1.15rem; font-weight: 700; font-family: var(--font-heading);">Mã Giảm Giá & Voucher Khuyến Mãi</h2>
+                            <p style="font-size: 0.78rem; color: var(--text-muted);">Tạo ưu đãi cho các chiến dịch marketing</p>
+                        </div>
+                        <button class="btn-primary" onclick="openAddCouponModal()">
+                            <span data-icon="plus"></span>
+                            <span>Tạo Mã Khuyến Mãi Mới</span>
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="vast-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mã Voucher</th>
+                                        <th>Mô Tả Ưu Đãi</th>
+                                        <th>Mức Giảm</th>
+                                        <th>Đơn Tối Thiểu</th>
+                                        <th>Đã Dùng / Giới Hạn</th>
+                                        <th>Hạn Dùng</th>
+                                        <th>Trạng Thái</th>
+                                        <th style="text-align: right;">Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coupons-table-body">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= TAB 7: SETTINGS ================= -->
+                <section class="tab-pane" id="tab-settings">
+                    <div class="settings-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Thông Tin Thương Hiệu VAST STUDIO</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="settings-form" onsubmit="handleSaveSettings(event)">
+                                    <div class="form-group">
+                                        <label class="form-label">Tên Cửa Hàng / Thương Hiệu</label>
+                                        <input type="text" class="form-control" id="setting-storeName" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Slogan Thương Hiệu</label>
+                                        <input type="text" class="form-control" id="setting-tagline">
+                                    </div>
+
+                                    <div class="form-row-2">
+                                        <div class="form-group">
+                                            <label class="form-label">Hotline CSKH</label>
+                                            <input type="text" class="form-control" id="setting-hotline">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Email Hỗ Trợ</label>
+                                            <input type="email" class="form-control" id="setting-email">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Địa Chỉ Showroom Hà Nội (Flagship)</label>
+                                        <input type="text" class="form-control" id="setting-addressHanoi">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Địa Chỉ Showroom TP. Hồ Chí Minh</label>
+                                        <input type="text" class="form-control" id="setting-addressHcm">
+                                    </div>
+
+                                    <button type="submit" class="btn-primary" style="margin-top: 10px;">
+                                        <span data-icon="check"></span>
+                                        <span>Lưu Cài Đặt Thương Hiệu</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Cấu Hình Vận Chuyển & Thanh Toán Ngân Hàng</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="payment-settings-form" onsubmit="handleSavePaymentSettings(event)">
+                                    <div class="form-row-2">
+                                        <div class="form-group">
+                                            <label class="form-label">Ngưỡng Miễn Phí Vận Chuyển (₫)</label>
+                                            <input type="number" class="form-control" id="setting-freeShippingThreshold">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Phí Giao Hàng Tiêu Chuẩn (₫)</label>
+                                            <input type="number" class="form-control" id="setting-defaultShippingFee">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Tên Ngân Hàng Nhận Chuyển Khoản QR</label>
+                                        <input type="text" class="form-control" id="setting-bankName">
+                                    </div>
+
+                                    <div class="form-row-2">
+                                        <div class="form-group">
+                                            <label class="form-label">Số Tài Khoản</label>
+                                            <input type="text" class="form-control" id="setting-bankAccount">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Chủ Tài Khoản</label>
+                                            <input type="text" class="form-control" id="setting-bankOwner">
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn-primary" style="margin-top: 10px;">
+                                        <span data-icon="check"></span>
+                                        <span>Lưu Cấu Hình Thanh Toán</span>
+                                    </button>
+                                </form>
+
+                                <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                                    <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--status-danger-text); margin-bottom: 8px;">Khu Vực Nguy Hiểm</h4>
+                                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 14px;">Khôi phục lại toàn bộ dữ liệu mẫu ban đầu của VAST STUDIO (Sản phẩm, Đơn hàng, Voucher).</p>
+                                    <button class="btn-danger" onclick="confirmResetData()">
+                                        <span data-icon="refresh"></span>
+                                        <span>Khôi Phục Dữ Liệu Ban Đầu</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- 1. Add / Edit Product Modal -->
+    <div class="modal-overlay" id="product-modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title" id="product-modal-title">Thêm Sản Phẩm Mới</h3>
+                <button class="btn-icon-sm" onclick="closeModal('product-modal')">
+                    <span data-icon="x"></span>
+                </button>
+            </div>
+            <form id="product-form" onsubmit="handleProductFormSubmit(event)">
+                <input type="hidden" id="prd-id">
+                <div class="modal-body">
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Tên Sản Phẩm *</label>
+                            <input type="text" class="form-control" id="prd-name" placeholder="VD: Áo Thun Heavyweight Oversized..." required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Mã SKU *</label>
+                            <input type="text" class="form-control" id="prd-sku" placeholder="VD: VAST-TSH-09" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Danh Mục *</label>
+                            <select class="form-control" id="prd-category" required>
+                                <option value="Áo thun">Áo thun</option>
+                                <option value="Áo sơ mi">Áo sơ mi</option>
+                                <option value="Hoodie & Sweater">Hoodie & Sweater</option>
+                                <option value="Quần">Quần</option>
+                                <option value="Áo khoác">Áo khoác</option>
+                                <option value="Phụ kiện">Phụ kiện</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Bộ Sưu Tập</label>
+                            <select class="form-control" id="prd-collection">
+                                <option value="Streetwear Core">Streetwear Core</option>
+                                <option value="Monochrome Season 2026">Monochrome Season 2026</option>
+                                <option value="Minimalist Essentials">Minimalist Essentials</option>
+                                <option value="Winter Outerwear Drop">Winter Outerwear Drop</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Giá Bán (VNĐ) *</label>
+                            <input type="number" class="form-control" id="prd-price" placeholder="VD: 450000" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Giá Gốc Niêm Yết (VNĐ)</label>
+                            <input type="number" class="form-control" id="prd-originalPrice" placeholder="VD: 550000">
+                        </div>
+                    </div>
+
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Kích Cỡ Có Sẵn (Phân cách bằng dấu phẩy)</label>
+                            <input type="text" class="form-control" id="prd-sizes" placeholder="VD: S, M, L, XL" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Màu Sắc (Phân cách bằng dấu phẩy)</label>
+                            <input type="text" class="form-control" id="prd-colors" placeholder="VD: Đen Washed, Trắng, Xám" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Số Lượng Tồn Kho Ban Đầu *</label>
+                            <input type="number" class="form-control" id="prd-stock" placeholder="VD: 50" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Trạng Thái Bán</label>
+                            <select class="form-control" id="prd-status">
+                                <option value="active">Đang mở bán (Hiển thị)</option>
+                                <option value="draft">Bản nháp (Ẩn)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Đường Dẫn Hình Ảnh (URL)</label>
+                        <input type="url" class="form-control" id="prd-image" placeholder="https://images.unsplash.com/...">
+                        <small style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-top: 4px;">Để trống nếu muốn hệ thống tự tạo ảnh đồ họa thời trang VAST STUDIO.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Mô Tả Chi Tiết Chất Liệu & Form Dáng</label>
+                        <textarea class="form-control" id="prd-description" placeholder="Chất liệu 100% Cotton, độ dày, form áo, hướng dẫn bảo quản..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('product-modal')">Hủy bỏ</button>
+                    <button type="submit" class="btn-primary" id="btn-save-product">Lưu Sản Phẩm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Order Details & Invoice Modal -->
+    <div class="modal-overlay" id="order-modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" id="order-modal-title">Chi Tiết Đơn Hàng #VAST-0000</h3>
+                    <span id="order-modal-date" style="font-size: 0.75rem; color: var(--text-muted);">14/11/2026</span>
+                </div>
+                <button class="btn-icon-sm" onclick="closeModal('order-modal')">
+                    <span data-icon="x"></span>
+                </button>
+            </div>
+            <div class="modal-body" id="order-modal-content">
+                <!-- Dynamically generated by JS -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="printInvoice()">
+                    <span data-icon="printer"></span>
+                    <span>In Phiếu Giao Hàng</span>
+                </button>
+                <button type="button" class="btn-secondary" onclick="closeModal('order-modal')">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Add Collection Modal -->
+    <div class="modal-overlay" id="collection-modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title">Thêm Bộ Sưu Tập Mới</h3>
+                <button class="btn-icon-sm" onclick="closeModal('collection-modal')">
+                    <span data-icon="x"></span>
+                </button>
+            </div>
+            <form id="collection-form" onsubmit="handleCollectionFormSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Tên Bộ Sưu Tập *</label>
+                        <input type="text" class="form-control" id="col-name" placeholder="VD: Summer Streetwear Drop 2026" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Mô Tả Bộ Sưu Tập</label>
+                        <textarea class="form-control" id="col-description" placeholder="Ý tưởng thiết kế, chất liệu chủ đạo..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">URL Ảnh Banner (Cover)</label>
+                        <input type="url" class="form-control" id="col-banner" placeholder="https://images.unsplash.com/...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('collection-modal')">Hủy</button>
+                    <button type="submit" class="btn-primary">Tạo Bộ Sưu Tập</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. Add Coupon Modal -->
+    <div class="modal-overlay" id="coupon-modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title">Tạo Mã Khuyến Mãi Mới</h3>
+                <button class="btn-icon-sm" onclick="closeModal('coupon-modal')">
+                    <span data-icon="x"></span>
+                </button>
+            </div>
+            <form id="coupon-form" onsubmit="handleCouponFormSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Mã Voucher (Viết hoa, không dấu) *</label>
+                        <input type="text" class="form-control" id="cpn-code" placeholder="VD: VASTBLACKFRIDAY" required style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Mô Tả Ưu Đãi *</label>
+                        <input type="text" class="form-control" id="cpn-description" placeholder="VD: Giảm 20% cho đơn hàng từ 1 triệu" required>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Loại Giảm Giá</label>
+                            <select class="form-control" id="cpn-type">
+                                <option value="fixed">Số tiền cố định (₫)</option>
+                                <option value="percent">Phần trăm (%)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Giá Trị Giảm *</label>
+                            <input type="number" class="form-control" id="cpn-value" placeholder="VD: 50000 hoặc 15" required>
+                        </div>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Giá Trị Đơn Tối Thiểu (₫)</label>
+                            <input type="number" class="form-control" id="cpn-minOrder" placeholder="VD: 500000" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Giới Hạn Lượt Dùng</label>
+                            <input type="number" class="form-control" id="cpn-usageLimit" placeholder="VD: 200" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Hạn Sử Dụng</label>
+                        <input type="date" class="form-control" id="cpn-expiryDate" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('coupon-modal')">Hủy</button>
+                    <button type="submit" class="btn-primary">Kích Hoạt Mã Giảm Giá</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 5. Notifications Drawer / Modal -->
+    <div class="modal-overlay" id="notif-modal">
+        <div class="modal-dialog" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Thông Báo Cửa Hàng</h3>
+                <button class="btn-icon-sm" onclick="closeModal('notif-modal')">
+                    <span data-icon="x"></span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 16px;">
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; gap: 12px; padding: 12px; border-radius: var(--radius-md); background: var(--bg-subtle);">
+                        <div style="color: #10b981;"><span data-icon="package"></span></div>
+                        <div>
+                            <p style="font-size: 0.82rem; font-weight: 600;">Đơn hàng mới #VAST-9825 vừa đặt</p>
+                            <p style="font-size: 0.72rem; color: var(--text-muted);">Khách Nguyễn Hoàng Minh - 1,280,000₫</p>
+                            <span style="font-size: 0.68rem; color: var(--text-muted);">25 phút trước</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; padding: 12px; border-radius: var(--radius-md); background: var(--bg-subtle);">
+                        <div style="color: #f59e0b;"><span data-icon="alertTriangle"></span></div>
+                        <div>
+                            <p style="font-size: 0.82rem; font-weight: 600;">Cảnh báo tồn kho thấp</p>
+                            <p style="font-size: 0.72rem; color: var(--text-muted);">Áo Len Dệt Kim chỉ còn 3 sản phẩm trong kho</p>
+                            <span style="font-size: 0.68rem; color: var(--text-muted);">1 giờ trước</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; padding: 12px; border-radius: var(--radius-md); background: var(--bg-subtle);">
+                        <div style="color: #3b82f6;"><span data-icon="checkCircle"></span></div>
+                        <div>
+                            <p style="font-size: 0.82rem; font-weight: 600;">Đơn hàng #VAST-9822 đã giao thành công</p>
+                            <p style="font-size: 0.72rem; color: var(--text-muted);">Khách Phạm Đức Anh đã nhận hàng</p>
+                            <span style="font-size: 0.68rem; color: var(--text-muted);">Hôm qua</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="closeModal('notif-modal')">Đã Đọc Tất Cả</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ================= MVC SCRIPTS ================= -->
+    <!-- SVG Vector Icons -->
+    <script src="js/icons.js"></script>
+
+    <!-- 1. MODEL LAYER (Data & LocalStorage) -->
+    <script src="js/models/StoreModel.js"></script>
+
+    <!-- 2. VIEW LAYER (DOM Rendering & Templates) -->
+    <script src="js/views/CommonView.js"></script>
+    <script src="js/views/DashboardView.js"></script>
+    <script src="js/views/ProductView.js"></script>
+    <script src="js/views/OrderView.js"></script>
+
+    <!-- 3. CONTROLLER LAYER (Logic, User Events & Router) -->
+    <script src="js/controllers/ProductController.js"></script>
+    <script src="js/controllers/OrderController.js"></script>
+    <script src="js/controllers/DashboardController.js"></script>
+    <script src="js/controllers/AppController.js"></script>
+
+    <!-- 4. BOOTSTRAP ENTRY POINT -->
+    <script src="js/app.js"></script>
+</body>
+</html>
+
