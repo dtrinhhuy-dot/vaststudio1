@@ -14,6 +14,8 @@
         CUSTOMERS: 'vast_customers_v1',
         COUPONS: 'vast_coupons_v1',
         SETTINGS: 'vast_settings_v1',
+        CART: 'vast_cart_v1',
+        WISHLIST: 'vast_wishlist_v1',
         THEME: 'vast_theme_v1'
     };
 
@@ -442,6 +444,167 @@
                 return order;
             }
             return null;
+        }
+
+        createOrder(orderInput) {
+            const orders = this.getOrders();
+            const orderId = 'VAST-' + (Math.floor(1000 + Math.random() * 9000));
+            const newOrder = {
+                id: orderId,
+                customerName: orderInput.customerName || 'Khách VAST',
+                customerPhone: orderInput.customerPhone || '',
+                customerEmail: orderInput.customerEmail || '',
+                shippingAddress: orderInput.shippingAddress || '',
+                items: orderInput.items || [],
+                subtotal: orderInput.subtotal || 0,
+                shippingFee: orderInput.shippingFee || 0,
+                discount: orderInput.discount || 0,
+                couponCode: orderInput.couponCode || null,
+                total: orderInput.total || 0,
+                paymentMethod: orderInput.paymentMethod || 'COD (Thanh toán khi nhận hàng)',
+                paymentStatus: (orderInput.paymentMethod && orderInput.paymentMethod.includes('QR')) ? 'Đã thanh toán' : 'Chưa thanh toán',
+                orderStatus: 'pending',
+                note: orderInput.note || '',
+                createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16)
+            };
+            orders.unshift(newOrder);
+            localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+
+            // Reduce product stock & increment salesCount
+            const products = this.getProducts();
+            (newOrder.items || []).forEach(item => {
+                const prd = products.find(p => p.id === item.id);
+                if (prd) {
+                    prd.stock = Math.max(0, (prd.stock || 0) - (item.quantity || 1));
+                    prd.salesCount = (prd.salesCount || 0) + (item.quantity || 1);
+                }
+            });
+            localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+
+            // Clear cart
+            this.clearCart();
+
+            return newOrder;
+        }
+
+        // --- CART METHODS ---
+        getCart() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEYS.CART) || '[]');
+        }
+
+        saveCart(cart) {
+            localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
+            window.dispatchEvent(new CustomEvent('vast:cart-updated', { detail: cart }));
+        }
+
+        addToCart(product, size, color, quantity = 1) {
+            const cart = this.getCart();
+            const chosenSize = size || (product.sizes && product.sizes[0]) || 'M';
+            const chosenColor = color || (product.colors && product.colors[0]) || 'Tiêu chuẩn';
+            
+            const existingIndex = cart.findIndex(item => 
+                item.id === product.id && item.size === chosenSize && item.color === chosenColor
+            );
+
+            if (existingIndex > -1) {
+                cart[existingIndex].quantity += quantity;
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    originalPrice: product.originalPrice,
+                    image: product.image,
+                    fallbackImage: product.fallbackImage,
+                    size: chosenSize,
+                    color: chosenColor,
+                    quantity: quantity
+                });
+            }
+
+            this.saveCart(cart);
+            return cart;
+        }
+
+        updateCartQuantity(index, quantity) {
+            const cart = this.getCart();
+            if (cart[index]) {
+                if (quantity <= 0) {
+                    cart.splice(index, 1);
+                } else {
+                    cart[index].quantity = quantity;
+                }
+                this.saveCart(cart);
+            }
+            return cart;
+        }
+
+        removeFromCart(index) {
+            const cart = this.getCart();
+            if (cart[index]) {
+                cart.splice(index, 1);
+                this.saveCart(cart);
+            }
+            return cart;
+        }
+
+        clearCart() {
+            this.saveCart([]);
+        }
+
+        getCartCount() {
+            return this.getCart().reduce((sum, item) => sum + (item.quantity || 1), 0);
+        }
+
+        getCartSubtotal() {
+            return this.getCart().reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+        }
+
+        // --- WISHLIST METHODS ---
+        getWishlist() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEYS.WISHLIST) || '[]');
+        }
+
+        toggleWishlist(productId) {
+            let wishlist = this.getWishlist();
+            const exists = wishlist.includes(productId);
+            if (exists) {
+                wishlist = wishlist.filter(id => id !== productId);
+            } else {
+                wishlist.push(productId);
+            }
+            localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify(wishlist));
+            window.dispatchEvent(new CustomEvent('vast:wishlist-updated', { detail: wishlist }));
+            return !exists;
+        }
+
+        isInWishlist(productId) {
+            return this.getWishlist().includes(productId);
+        }
+
+        // --- COUPON VALIDATION ---
+        validateCoupon(code, subtotal) {
+            if (!code) return { valid: false, message: 'Vui lòng nhập mã giảm giá' };
+            const coupons = this.getCoupons();
+            const coupon = coupons.find(c => c.code.toUpperCase() === code.trim().toUpperCase() && c.status === 'active');
+            
+            if (!coupon) {
+                return { valid: false, message: 'Mã giảm giá không hợp lệ hoặc đã hết hạn' };
+            }
+            if (subtotal < coupon.minOrder) {
+                return { 
+                    valid: false, 
+                    message: `Mã ${coupon.code} chỉ áp dụng cho đơn hàng từ ${coupon.minOrder.toLocaleString('vi-VN')}₫` 
+                };
+            }
+
+            let discount = 0;
+            if (coupon.type === 'fixed') {
+                discount = coupon.value;
+            } else if (coupon.type === 'percent') {
+                discount = Math.round(subtotal * (coupon.value / 100));
+            }
+            return { valid: true, coupon, discount };
         }
 
         // --- COLLECTION MODEL METHODS ---

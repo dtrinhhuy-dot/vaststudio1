@@ -23,7 +23,9 @@ window.toggleNotificationsModal = () => {
 };
 window.handleGlobalSearch = (e) => window.AppController.handleGlobalSearch(e);
 window.confirmResetData = () => window.AppController.confirmResetData();
-window.openStorefrontDemo = () => window.CommonView.showToast('Đang kết nối cổng xem trước gian hàng trực tuyến VAST STUDIO...', 'info');
+window.openStorefrontDemo = () => {
+    window.location.href = 'index.html';
+};
 
 // Product Actions
 window.openAddProductModal = () => window.ProductController.openAddModal();
