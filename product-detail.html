@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi Tiết Sản Phẩm — VAST STUDIO | Modern Streetwear</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/storefront.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23000'/><text x='50' y='68' font-size='60' font-family='sans-serif' font-weight='900' fill='%23fff' text-anchor='middle'>V</text></svg>">
+</head>
+<body class="store-body">
+
+    <!-- 1. ANNOUNCEMENT TOPBAR -->
+    <div class="announcement-bar">
+        <div class="store-container">
+            <div class="announcement-inner">
+                <div class="announcement-text">
+                    <span>🔥 Miễn phí vận chuyển cho đơn từ 500K</span>
+                    <span>|</span>
+                    <span>Nhập mã <span class="announcement-code" onclick="Storefront.copyCoupon('VASTWELCOME')" title="Nhấp để sao chép mã">VASTWELCOME</span> giảm ngay 100K</span>
+                </div>
+                <div class="announcement-links">
+                    <a href="order-tracking.html" class="announcement-link">
+                        <span data-icon="truck"></span> Tra cứu đơn hàng
+                    </a>
+                    <span class="announcement-link">
+                        <span data-icon="phone"></span> Hotline: 0988.123.456
+                    </span>
+                    <a href="admin.html" class="admin-access-badge" title="Chuyển đến Trang Quản Trị Cửa Hàng">
+                        <span data-icon="dashboard"></span> Trang Quản Trị
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MAIN NAVIGATION HEADER -->
+    <header class="store-header">
+        <div class="store-container">
+            <div class="store-header-inner">
+                <!-- Brand Monogram & Name -->
+                <a href="index.html" class="store-brand">
+                    <div class="brand-monogram">V</div>
+                    <div class="brand-text-block">
+                        <span class="brand-main-title">VAST STUDIO</span>
+                        <span class="brand-sub-title">Streetwear Core</span>
+                    </div>
+                </a>
+
+                <!-- Nav Menu Links -->
+                <nav>
+                    <ul class="store-nav-menu">
+                        <li><a href="index.html" class="nav-link">Trang chủ</a></li>
+                        <li><a href="products.html" class="nav-link active">Sản phẩm <span class="nav-badge-hot">Hot</span></a></li>
+                        <li><a href="about.html" class="nav-link">Giới thiệu</a></li>
+                        <li><a href="order-tracking.html" class="nav-link">Tra cứu đơn</a></li>
+                        <li><a href="contact.html" class="nav-link">Liên hệ & Store</a></li>
+                    </ul>
+                </nav>
+
+                <!-- Header Actions -->
+                <div class="store-header-actions">
+                    <button class="action-icon-btn" title="Tìm kiếm sản phẩm" onclick="Storefront.openSearchModal()">
+                        <span data-icon="search"></span>
+                    </button>
+
+                    <button class="action-icon-btn" id="theme-toggle-btn" title="Đổi giao diện Sáng / Tối" onclick="Storefront.toggleTheme()">
+                        <span id="theme-toggle-icon" data-icon="sun"></span>
+                    </button>
+
+                    <button class="action-icon-btn" title="Danh sách yêu thích" onclick="Storefront.openWishlist()">
+                        <span data-icon="heart"></span>
+                        <span class="action-badge" id="header-wishlist-badge" style="display: none;">0</span>
+                    </button>
+
+                    <button class="btn-header-cart" onclick="Storefront.openCart()">
+                        <span data-icon="shoppingBag"></span>
+                        <span>Giỏ hàng</span>
+                        <span class="action-badge" id="header-cart-badge" style="display: none;">0</span>
+                    </button>
+
+                    <a href="admin.html" class="action-icon-btn" title="Quản trị Shop" style="margin-left: 4px;">
+                        <span data-icon="settings"></span>
+                    </a>
+
+                    <button class="mobile-nav-toggle" onclick="Storefront.openCart()">
+                        <span data-icon="menu"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 3. MAIN PRODUCT DETAIL CONTENT -->
+    <main class="pdp-wrapper">
+        <div class="store-container">
+            <!-- Breadcrumbs -->
+            <nav class="breadcrumbs" aria-label="Breadcrumb">
+                <a href="index.html">Trang chủ</a>
+                <span>/</span>
+                <a href="products.html">Sản phẩm</a>
+                <span>/</span>
+                <span id="pdp-breadcrumb-name" style="color: var(--text-primary); font-weight: 600;">Chi tiết sản phẩm</span>
+            </nav>
+
+            <!-- PDP Main Layout (2 Columns: Gallery + Purchase Info) -->
+            <div class="pdp-layout">
+                <!-- Left: Multi-photo Gallery -->
+                <div class="pdp-gallery-wrap">
+                    <div class="pdp-main-image-box">
+                        <img id="pdp-main-img" src="" alt="VAST STUDIO Product Image" loading="eager">
+                    </div>
+                    <div class="pdp-thumbs-row" id="pdp-thumbs-container">
+                        <!-- Populated by Storefront.js -->
+                    </div>
+                </div>
+
+                <!-- Right: Product Info & Actions -->
+                <div class="pdp-info-wrap">
+                    <div>
+                        <span class="pdp-category-tag" id="pdp-category-tag">Áo thun • Streetwear Core</span>
+                        <h1 class="pdp-title" id="pdp-title">Tên sản phẩm</h1>
+                        
+                        <div class="pdp-meta-row" style="margin-top: 8px;">
+                            <span class="pdp-rating-badge">
+                                ★★★★★ <span style="color: var(--text-primary); margin-left: 4px;">4.9</span>
+                            </span>
+                            <span>•</span>
+                            <span id="pdp-sku">SKU: VAST-01</span>
+                            <span>•</span>
+                            <span id="pdp-stock-status">● Còn hàng</span>
+                        </div>
+                    </div>
+
+                    <!-- Price Row -->
+                    <div class="pdp-price-row">
+                        <span class="pdp-price-current" id="pdp-price">0 ₫</span>
+                        <span class="pdp-price-old" id="pdp-old-price" style="display: none;">0 ₫</span>
+                        <span class="pdp-savings-pill" id="pdp-savings" style="display: none;">Tiết kiệm</span>
+                    </div>
+
+                    <!-- Brief Description -->
+                    <p id="pdp-desc" style="color: var(--text-secondary); line-height: 1.6; margin: 0; font-size: 0.95rem;">
+                        Mô tả sản phẩm...
+                    </p>
+
+                    <!-- Color Selector -->
+                    <div class="quickview-option-group">
+                        <span class="option-group-label">
+                            Màu sắc: <strong id="pdp-selected-color-label">Đen Washed</strong>
+                        </span>
+                        <div class="quickview-pills-row" id="pdp-colors-container">
+                            <!-- Populated by Storefront.js -->
+                        </div>
+                    </div>
+
+                    <!-- Size Selector -->
+                    <div class="quickview-option-group">
+                        <div class="option-group-label">
+                            <span>Kích thước: <strong id="pdp-selected-size-label">L</strong></span>
+                            <a href="javascript:void(0)" onclick="Storefront.openSizeGuideModal()" style="color: var(--store-gold); text-decoration: underline; font-size: 0.8rem; font-weight: 700;">
+                                Bảng chọn size chuẩn
+                            </a>
+                        </div>
+                        <div class="quickview-pills-row" id="pdp-sizes-container">
+                            <!-- Populated by Storefront.js -->
+                        </div>
+                    </div>
+
+                    <!-- Quantity & Action Buttons -->
+                    <div style="display: flex; gap: 14px; align-items: center; margin-top: 6px;">
+                        <div class="qty-control" style="height: 52px;">
+                            <button class="qty-btn" style="width: 42px; height: 52px; font-size: 1rem;" onclick="Storefront.adjustPDPQty(-1)">-</button>
+                            <span class="qty-value" id="pdp-qty-display" style="width: 46px; font-size: 1.05rem;">1</span>
+                            <button class="qty-btn" style="width: 42px; height: 52px; font-size: 1rem;" onclick="Storefront.adjustPDPQty(1)">+</button>
+                        </div>
+
+                        <button class="btn-pdp-add-cart" onclick="Storefront.submitPDPAddToCart()">
+                            <span data-icon="shoppingBag"></span> Thêm Vào Giỏ
+                        </button>
+
+                        <button class="btn-pdp-buy-now" onclick="Storefront.submitPDPBuyNow()">
+                            Mua Ngay
+                        </button>
+
+                        <button class="action-icon-btn" id="pdp-btn-wishlist" style="width: 52px; height: 52px; border: 1px solid var(--border-color);" 
+                                onclick="Storefront.toggleWishlist(Storefront.state.pdpProduct.id, this)" title="Lưu vào yêu thích">
+                            <span data-icon="heart"></span>
+                        </button>
+                    </div>
+
+                    <!-- Commitments Box -->
+                    <div class="pdp-commitments-box">
+                        <div class="pdp-commit-item">
+                            <span data-icon="truck" style="color: var(--store-emerald);"></span>
+                            <span><strong>Miễn phí vận chuyển:</strong> Toàn quốc cho đơn hàng từ 500.000₫</span>
+                        </div>
+                        <div class="pdp-commit-item">
+                            <span data-icon="rotateCcw" style="color: var(--store-gold);"></span>
+                            <span><strong>Đổi trả 30 ngày:</strong> Hỗ trợ đổi size tận nhà nhanh chóng</span>
+                        </div>
+                        <div class="pdp-commit-item">
+                            <span data-icon="shieldCheck" style="color: #38bdf8;"></span>
+                            <span><strong>Bảo hành chính hãng:</strong> Trọn đời đường may và cúc áo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PDP Tabbed Information Section -->
+            <div class="pdp-tabs-container">
+                <div class="pdp-tabs-header">
+                    <button class="pdp-tab-btn active" onclick="Storefront.switchPDPTab('details', this)">Mô Tả & Thiết Kế</button>
+                    <button class="pdp-tab-btn" onclick="Storefront.switchPDPTab('specs', this)">Thông Số & Chất Liệu</button>
+                    <button class="pdp-tab-btn" onclick="Storefront.switchPDPTab('care', this)">Hướng Dẫn Bảo Quản</button>
+                    <button class="pdp-tab-btn" onclick="Storefront.switchPDPTab('reviews', this)">Đánh Giá Khách Hàng</button>
+                </div>
+
+                <!-- Tab 1: Chi tiết & Thiết kế -->
+                <div class="pdp-tab-content pdp-tab-pane" id="pdp-pane-details">
+                    <h3 style="font-family: var(--store-font-heading); margin: 0 0 12px; color: var(--text-primary);">
+                        TRIẾT LÝ THIẾT KẾ ĐƯƠNG ĐẠI
+                    </h3>
+                    <p>
+                        Mỗi thiết kế tại <strong>VAST STUDIO</strong> đều trải qua quy trình nghiên cứu phom dáng tỉ mỉ dựa trên nhân trắc học người Á Đông. Form dáng <em>Boxy Drop-shoulder</em> mang lại sự phóng khoáng, thoải mái tối đa cho người mặc nhưng vẫn giữ được độ đứng dáng sang trọng.
+                    </p>
+                    <p>
+                        Điểm nhấn nhận diện thương hiệu là chi tiết tag kim loại mạ bạc đính tinh tế sau gáy áo hoặc túi quần, kết hợp cùng kỹ thuật trần đè 2 kim gia cố nách áo và cạp quần để đảm bảo độ bền tối ưu qua hàng trăm lần giặt.
+                    </p>
+                </div>
+
+                <!-- Tab 2: Thông số kỹ thuật -->
+                <div class="pdp-tab-content pdp-tab-pane" id="pdp-pane-specs" style="display: none;">
+                    <h3 style="font-family: var(--store-font-heading); margin: 0 0 12px; color: var(--text-primary);">
+                        THÔNG SỐ KỸ THUẬT SẢN PHẨM
+                    </h3>
+                    <table class="pdp-specs-table">
+                        <tbody>
+                            <tr><td>Chất liệu</td><td>100% Sợi Cotton dệt thoi mật độ cao (Heavyweight 280-400GSM)</td></tr>
+                            <tr><td>Xử lý bề mặt</td><td>Xử lý wash xơ sợi chống co rút, bề mặt mịn màng không xơ lông</td></tr>
+                            <tr><td>Kỹ thuật may</td><td>May trần đè 2 kim kỹ thuật cao, viền cổ dệt gân 1x1 co giãn hồi form</td></tr>
+                            <tr><td>Chi tiết nhận diện</td><td>Tag kim loại dập nổi logo VAST đính sau gáy</td></tr>
+                            <tr><td>Xuất xứ</td><td>Tự hào thiết kế & sản xuất tại Việt Nam</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tab 3: Hướng dẫn bảo quản -->
+                <div class="pdp-tab-content pdp-tab-pane" id="pdp-pane-care" style="display: none;">
+                    <h3 style="font-family: var(--store-font-heading); margin: 0 0 12px; color: var(--text-primary);">
+                        HƯỚNG DẪN GIẶT & BẢO QUẢN
+                    </h3>
+                    <ul style="padding-left: 20px; line-height: 1.8;">
+                        <li>Nên giặt bằng nước lạnh hoặc nước ấm dưới 30°C để giữ màu sắc bền đẹp nhất.</li>
+                        <li>Lộn trái áo khi giặt và phơi để bảo vệ bề mặt sợi vải và chi tiết thêu.</li>
+                        <li>Không sử dụng thuốc tẩy có chứa clo hoặc chất làm mềm vải quá nồng.</li>
+                        <li>Phơi ở nơi thoáng mát râm mát, tránh ánh nắng trực tiếp gay gắt.</li>
+                        <li>Ủi ở nhiệt độ trung bình (dưới 150°C), không ủi trực tiếp lên tag kim loại.</li>
+                    </ul>
+                </div>
+
+                <!-- Tab 4: Đánh giá khách hàng -->
+                <div class="pdp-tab-content pdp-tab-pane" id="pdp-pane-reviews" style="display: none;">
+                    <div class="reviews-grid-wrap">
+                        <!-- Score Summary -->
+                        <div class="review-summary-card">
+                            <span class="review-score-big" id="pdp-avg-rating">4.9</span>
+                            <div style="color: #f59e0b; font-size: 1.2rem;">★★★★★</div>
+                            <span style="font-size: 0.85rem; color: var(--text-muted);" id="pdp-review-count">Đánh giá thực tế</span>
+                            
+                            <!-- Write Review Form -->
+                            <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 12px; text-align: left;">
+                                <h4 style="margin: 0 0 10px; font-size: 0.95rem;">Viết đánh giá của bạn</h4>
+                                <form id="pdp-review-form" onsubmit="Storefront.handleReviewSubmit(event)" style="display: flex; flex-direction: column; gap: 8px;">
+                                    <input type="text" id="review-input-name" class="checkout-input" placeholder="Tên của bạn *" required style="padding: 8px 12px; font-size: 0.85rem;">
+                                    <input type="text" id="review-input-city" class="checkout-input" placeholder="Thành phố (ví dụ: Hà Nội)" style="padding: 8px 12px; font-size: 0.85rem;">
+                                    <select id="review-input-rating" class="checkout-input" style="padding: 8px 12px; font-size: 0.85rem; cursor: pointer;">
+                                        <option value="5">★★★★★ (5 sao - Cực kỳ hài lòng)</option>
+                                        <option value="4">★★★★☆ (4 sao - Rất tốt)</option>
+                                        <option value="3">★★★☆☆ (3 sao - Tạm ổn)</option>
+                                    </select>
+                                    <textarea id="review-input-content" class="checkout-input" rows="3" placeholder="Chia sẻ cảm nhận về form dáng, chất vải..." required style="padding: 8px 12px; font-size: 0.85rem; resize: none;"></textarea>
+                                    <button type="submit" class="btn-hero-primary" style="padding: 10px; font-size: 0.85rem; justify-content: center;">
+                                        Gửi Đánh Giá
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Reviews List -->
+                        <div class="reviews-list-col" id="pdp-reviews-list">
+                            <!-- Populated by Storefront.js -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Products Section (Complete The Look) -->
+            <section class="store-section" style="padding-top: 0;">
+                <div class="section-header-row">
+                    <div class="section-title-wrap">
+                        <span class="section-label">Gợi ý phối đồ</span>
+                        <h2 class="section-heading">COMPLETE THE LOOK</h2>
+                        <p class="section-subheading">Các thiết kế chuẩn streetwear phối đồ cực chất cùng sản phẩm này.</p>
+                    </div>
+                    <a href="products.html" class="section-view-all-link">
+                        Xem tất cả sản phẩm <span data-icon="arrowRight"></span>
+                    </a>
+                </div>
+
+                <div class="products-grid" id="pdp-related-grid">
+                    <!-- Populated by Storefront.js -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 4. FOOTER -->
+    <footer class="store-footer">
+        <div class="store-container">
+            <div class="footer-grid">
+                <div class="footer-col-brand">
+                    <div class="footer-brand-title">VAST STUDIO</div>
+                    <p class="footer-desc">
+                        Thương hiệu thời trang đường phố đương đại & phong cách tối giản. Định hình gu ăn mặc tự tin, chỉn chu và phong cách cho giới trẻ Việt Nam.
+                    </p>
+                    <div class="footer-stores-list">
+                        <div class="store-loc-item">
+                            <span data-icon="mapPin"></span>
+                            <span><strong>Hà Nội:</strong> 148 Phố Huế, Q. Hai Bà Trưng (Flagship Store)</span>
+                        </div>
+                        <div class="store-loc-item">
+                            <span data-icon="mapPin"></span>
+                            <span><strong>TP.HCM:</strong> 72 Lê Thánh Tôn, P. Bến Nghé, Quận 1</span>
+                        </div>
+                        <div class="store-loc-item">
+                            <span data-icon="phone"></span>
+                            <span><strong>Hotline:</strong> 0988.123.456 (9:00 - 22:00 hàng ngày)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="footer-col-title">Khám Phá Shop</h4>
+                    <ul class="footer-links">
+                        <li><a href="products.html" class="footer-link">Tất cả sản phẩm</a></li>
+                        <li><a href="products.html?category=Áo thun" class="footer-link">Áo thun Heavyweight</a></li>
+                        <li><a href="products.html?category=Áo sơ mi" class="footer-link">Áo sơ mi Oxford</a></li>
+                        <li><a href="products.html?category=Quần" class="footer-link">Quần Parachute & Denim</a></li>
+                        <li><a href="products.html?category=Áo khoác" class="footer-link">Áo khoác Bomber</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="footer-col-title">Hỗ Trợ Khách Hàng</h4>
+                    <ul class="footer-links">
+                        <li><a href="order-tracking.html" class="footer-link">Tra cứu tiến độ đơn hàng</a></li>
+                        <li><a href="about.html" class="footer-link">Câu chuyện thương hiệu</a></li>
+                        <li><a href="contact.html" class="footer-link">Liên hệ showroom</a></li>
+                        <li><a href="javascript:void(0)" onclick="Storefront.openSizeGuideModal()" class="footer-link">Bảng chọn size chuẩn</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="footer-col-title">Hệ Thống Quản Trị</h4>
+                    <p style="font-size: 0.85rem; color: #a1a1aa; line-height: 1.5; margin-bottom: 16px;">
+                        Hệ thống kết nối trực tiếp với Trung tâm Quản trị Cửa hàng (Admin Portal).
+                    </p>
+                    <a href="admin.html" class="footer-admin-btn">
+                        <span data-icon="dashboard"></span>
+                        <span>Đến Trang Quản Trị Cửa Hàng</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer-bottom-row">
+                <div>© 2026 <strong>VAST STUDIO</strong>. Tất cả quyền được bảo lưu.</div>
+                <div>Thanh toán: Vietcombank QR • MoMo • COD</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ======================================================================
+         MODALS, DRAWERS & FLOATING WIDGETS
+         ====================================================================== -->
+
+    <!-- CART DRAWER -->
+    <div class="cart-drawer-overlay" id="cart-drawer-overlay" onclick="Storefront.closeCart()"></div>
+    <aside class="cart-drawer" id="cart-drawer">
+        <div class="cart-header">
+            <h3 class="cart-title"><span data-icon="shoppingBag"></span> Giỏ Hàng Của Bạn</h3>
+            <button class="cart-close-btn" onclick="Storefront.closeCart()"><span data-icon="x"></span></button>
+        </div>
+        <div class="cart-shipping-meter">
+            <div id="shipping-meter-text">Mua thêm để được FREESHIP</div>
+            <div class="meter-bar-track"><div class="meter-bar-fill" id="shipping-meter-fill"></div></div>
+        </div>
+        <div class="cart-items-container" id="cart-items-container"></div>
+        <div class="cart-footer">
+            <div class="cart-coupon-box">
+                <input type="text" class="cart-coupon-input" id="cart-coupon-input" placeholder="Nhập mã ưu đãi...">
+                <button class="btn-apply-coupon" onclick="Storefront.applyCouponCode()">Áp Dụng</button>
+            </div>
+            <div class="cart-totals-list">
+                <div class="cart-total-row"><span>Tạm tính:</span><span id="cart-summary-subtotal">0 ₫</span></div>
+                <div class="cart-total-row" id="cart-discount-row" style="display: none; color: var(--store-emerald);">
+                    <span>Giảm giá:</span><span id="cart-summary-discount">-0 ₫</span>
+                </div>
+                <div class="cart-total-row"><span>Phí ship:</span><span id="cart-summary-shipping">Miễn phí</span></div>
+                <div class="cart-total-row grand-total"><span>Tổng:</span><span id="cart-summary-total">0 ₫</span></div>
+            </div>
+            <button class="btn-checkout-now" id="btn-cart-checkout" onclick="Storefront.openCheckoutModal()">
+                Tiến Hành Đặt Hàng <span data-icon="arrowRight"></span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- WISHLIST DRAWER -->
+    <div class="cart-drawer-overlay" id="wishlist-drawer-overlay" onclick="Storefront.closeWishlist()"></div>
+    <aside class="wishlist-drawer" id="wishlist-drawer">
+        <div class="cart-header">
+            <h3 class="cart-title"><span data-icon="heart"></span> Danh Sách Yêu Thích</h3>
+            <button class="cart-close-btn" onclick="Storefront.closeWishlist()"><span data-icon="x"></span></button>
+        </div>
+        <div class="wishlist-items-container" id="wishlist-items-container"></div>
+    </aside>
+
+    <!-- CHECKOUT MODAL -->
+    <div class="checkout-modal-overlay" id="checkout-modal-overlay" onclick="if(event.target === this) Storefront.closeCheckoutModal()">
+        <div class="checkout-dialog" id="checkout-modal-content">
+            <div class="checkout-header">
+                <button class="cart-close-btn" style="float: right;" onclick="Storefront.closeCheckoutModal()">×</button>
+                <h3 class="checkout-title">Thông Tin Giao Hàng & Thanh Toán</h3>
+            </div>
+            <form class="checkout-form" onsubmit="Storefront.submitOrderForm(event)">
+                <div class="checkout-input-group">
+                    <label class="checkout-input-label">Họ và tên *</label>
+                    <input type="text" id="checkout-name" class="checkout-input" placeholder="Ví dụ: Nguyễn Văn A" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="checkout-input-group">
+                        <label class="checkout-input-label">Số điện thoại *</label>
+                        <input type="tel" id="checkout-phone" class="checkout-input" placeholder="0912 345 678" required>
+                    </div>
+                    <div class="checkout-input-group">
+                        <label class="checkout-input-label">Email</label>
+                        <input type="email" id="checkout-email" class="checkout-input" placeholder="email@gmail.com">
+                    </div>
+                </div>
+                <div class="checkout-input-group">
+                    <label class="checkout-input-label">Địa chỉ nhận hàng *</label>
+                    <input type="text" id="checkout-address" class="checkout-input" placeholder="Số nhà, đường, Phường, Quận, Thành phố..." required>
+                </div>
+                <div class="checkout-input-group">
+                    <label class="checkout-input-label">Ghi chú</label>
+                    <input type="text" id="checkout-note" class="checkout-input" placeholder="Ghi chú thêm cho shipper...">
+                </div>
+                <div class="checkout-input-group">
+                    <label class="checkout-input-label">Phương thức thanh toán</label>
+                    <div class="payment-methods-grid">
+                        <label class="payment-method-card active" onclick="this.parentElement.querySelectorAll('.payment-method-card').forEach(c=>c.classList.remove('active')); this.classList.add('active');">
+                            <input type="radio" name="paymentMethod" value="COD" checked>
+                            <div><strong>COD</strong><span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Thanh toán khi nhận</span></div>
+                        </label>
+                        <label class="payment-method-card" onclick="this.parentElement.querySelectorAll('.payment-method-card').forEach(c=>c.classList.remove('active')); this.classList.add('active');">
+                            <input type="radio" name="paymentMethod" value="QR">
+                            <div><strong>Chuyển khoản QR</strong><span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Vietcombank 24/7</span></div>
+                        </label>
+                    </div>
+                </div>
+                <div style="margin-top: 12px; display: flex; gap: 12px;">
+                    <button type="button" class="btn-hero-outline" style="flex: 1;" onclick="Storefront.closeCheckoutModal()">Quay Lại</button>
+                    <button type="submit" class="btn-hero-primary" style="flex: 2; justify-content: center;">Xác Nhận Đặt Hàng</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- QUICK VIEW MODAL -->
+    <div class="quickview-modal-overlay" id="quickview-modal-overlay" onclick="if(event.target === this) Storefront.closeQuickView()">
+        <div class="quickview-dialog" id="quickview-dialog"></div>
+    </div>
+
+    <!-- LIVE SEARCH OVERLAY -->
+    <div class="search-modal-overlay" id="search-modal-overlay" onclick="if(event.target === this) Storefront.closeSearchModal()">
+        <div class="search-dialog">
+            <div class="search-input-box">
+                <span class="search-input-icon" data-icon="search"></span>
+                <input type="text" class="search-modal-input" id="search-modal-input" placeholder="Tìm kiếm nhanh sản phẩm..." oninput="Storefront.handleLiveSearch(this.value)">
+                <button class="cart-close-btn" style="position: absolute; right: 18px; top: 50%; transform: translateY(-50%);" onclick="Storefront.closeSearchModal()"><span data-icon="x"></span></button>
+            </div>
+            <div class="search-results-box" id="search-results-list"></div>
+        </div>
+    </div>
+
+    <!-- SIZE GUIDE MODAL -->
+    <div class="quickview-modal-overlay" id="size-guide-modal-overlay" onclick="if(event.target === this) Storefront.closeSizeGuideModal()">
+        <div class="quickview-dialog" style="max-width: 650px; display: block; padding: 32px;">
+            <button class="quickview-close-btn" onclick="Storefront.closeSizeGuideModal()">×</button>
+            <h3 style="font-family: var(--store-font-heading); margin: 0 0 8px;">Bảng Quy Chuẩn Size VAST STUDIO</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 20px;">Tất cả sản phẩm may theo form Boxy / Oversized chuẩn phong cách streetwear.</p>
+            <h4 style="font-size: 0.95rem; margin: 16px 0 8px;">1. Bảng size Áo:</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; margin-bottom: 20px;">
+                <thead><tr style="border-bottom: 2px solid var(--border-color); color: var(--text-muted);"><th style="padding: 8px;">Size</th><th style="padding: 8px;">Chiều cao</th><th style="padding: 8px;">Cân nặng</th><th style="padding: 8px;">Dài áo</th></tr></thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-subtle);"><td style="padding: 8px;"><strong>S</strong></td><td style="padding: 8px;">155-165 cm</td><td style="padding: 8px;">48-58 kg</td><td style="padding: 8px;">68 cm</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-subtle);"><td style="padding: 8px;"><strong>M</strong></td><td style="padding: 8px;">165-173 cm</td><td style="padding: 8px;">58-68 kg</td><td style="padding: 8px;">71 cm</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-subtle);"><td style="padding: 8px;"><strong>L</strong></td><td style="padding: 8px;">173-180 cm</td><td style="padding: 8px;">68-78 kg</td><td style="padding: 8px;">74 cm</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-subtle);"><td style="padding: 8px;"><strong>XL</strong></td><td style="padding: 8px;">180-190 cm</td><td style="padding: 8px;">78-92 kg</td><td style="padding: 8px;">77 cm</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- FLOATING SUPPORT WIDGET & BACK TO TOP -->
+    <div class="floating-support-bar">
+        <div class="float-tooltip">
+            <span>👋 Cần tư vấn size?</span>
+        </div>
+        <a href="tel:0988123456" class="float-btn float-btn-hotline" title="Gọi Hotline 0988.123.456">
+            <span data-icon="phone"></span>
+        </a>
+        <a href="https://zalo.me" target="_blank" class="float-btn float-btn-zalo" title="Chat Zalo tư vấn chọn size">
+            Zalo
+        </a>
+        <button class="float-btn btn-back-to-top" id="btn-back-to-top" onclick="Storefront.scrollToTop()" title="Lên đầu trang">
+            ↑
+        </button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/icons.js"></script>
+    <script src="js/models/StoreModel.js"></script>
+    <script src="js/storefront.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('[data-icon]').forEach(el => {
+                const iconName = el.getAttribute('data-icon');
+                if (window.ICONS && window.ICONS[iconName]) {
+                    el.innerHTML = window.ICONS[iconName];
+                }
+            });
+        });
+    </script>
+</body>
+</html>

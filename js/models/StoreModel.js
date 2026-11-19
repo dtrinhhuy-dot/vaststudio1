@@ -16,6 +16,7 @@
         SETTINGS: 'vast_settings_v1',
         CART: 'vast_cart_v1',
         WISHLIST: 'vast_wishlist_v1',
+        REVIEWS: 'vast_reviews_v1',
         THEME: 'vast_theme_v1'
     };
 
@@ -485,6 +486,79 @@
             this.clearCart();
 
             return newOrder;
+        }
+
+        getOrdersByPhone(phone) {
+            const cleanPhone = (phone || '').replace(/\s+/g, '');
+            if (!cleanPhone) return [];
+            return this.getOrders().filter(o => (o.customerPhone || '').replace(/\s+/g, '').includes(cleanPhone));
+        }
+
+        cancelOrder(orderId) {
+            const orders = this.getOrders();
+            const order = orders.find(o => o.id === orderId);
+            if (order && (order.orderStatus === 'pending' || order.orderStatus === 'processing')) {
+                order.orderStatus = 'cancelled';
+                localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+                return { success: true, order };
+            }
+            return { success: false, message: 'Đơn hàng không thể hủy hoặc không tồn tại' };
+        }
+
+        // --- REVIEWS METHODS ---
+        getReviews() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEYS.REVIEWS) || '{}');
+        }
+
+        getProductReviews(productId) {
+            const allReviews = this.getReviews();
+            if (allReviews[productId] && allReviews[productId].length > 0) {
+                return allReviews[productId];
+            }
+            return [
+                {
+                    author: 'Hoàng Minh',
+                    city: 'Hà Nội',
+                    rating: 5,
+                    date: '2026-11-12',
+                    variant: 'Size L • Đen Washed',
+                    content: 'Chất vải dệt rất đầm tay, mặc đứng form chuẩn boxy. Giặt máy không bị xù lông hay bai cổ áo, xứng đáng từng đồng.'
+                },
+                {
+                    author: 'Thảo Ly',
+                    city: 'TP.HCM',
+                    rating: 5,
+                    date: '2026-11-05',
+                    variant: 'Size M • Trắng Vintage',
+                    content: 'Giao hàng siêu nhanh, đóng gói hộp đen xịn sò như đồ luxury. Đường may trần đè 2 kim kỹ lưỡng, rất tôn dáng.'
+                },
+                {
+                    author: 'Đức Anh',
+                    city: 'Đà Nẵng',
+                    rating: 5,
+                    date: '2026-10-28',
+                    variant: 'Size XL • Xám Ti-tan',
+                    content: 'Phối với quần wide leg denim cực kỳ hợp gu. Sẽ tiếp tục ủng hộ VAST STUDIO ở các drop sau!'
+                }
+            ];
+        }
+
+        addReview(productId, reviewData) {
+            const allReviews = this.getReviews();
+            if (!allReviews[productId]) {
+                allReviews[productId] = [...this.getProductReviews(productId)];
+            }
+            const newReview = {
+                author: reviewData.author || 'Khách hàng VAST',
+                city: reviewData.city || 'Việt Nam',
+                rating: Number(reviewData.rating) || 5,
+                date: new Date().toISOString().split('T')[0],
+                variant: reviewData.variant || 'Tiêu chuẩn',
+                content: reviewData.content || ''
+            };
+            allReviews[productId].unshift(newReview);
+            localStorage.setItem(STORAGE_KEYS.REVIEWS, JSON.stringify(allReviews));
+            return newReview;
         }
 
         // --- CART METHODS ---
