@@ -1,12 +1,15 @@
 // ==========================================================================
-// VAST STUDIO — Lightweight Static Admin Server (Node.js Built-in)
-// No npm dependencies required. Run: node server.js or npm start
+// VAST STUDIO — Lightweight Static & E-Commerce Server (Node.js Built-in)
+// No npm dependencies or Laragon/XAMPP required.
+// Run: node server.js OR double click start.bat OR npm start
 // ==========================================================================
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const os = require('os');
+const { exec } = require('child_process');
 
 const DEFAULT_PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
@@ -21,15 +24,32 @@ const MIME_TYPES = {
     '.jpeg': 'image/jpeg',
     '.webp': 'image/webp',
     '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon'
+    '.ico': 'image/x-icon',
+    '.woff2': 'font/woff2',
+    '.woff': 'font/woff',
+    '.ttf': 'font/ttf'
 };
+
+function getLocalIP() {
+    try {
+        const interfaces = os.networkInterfaces();
+        for (const name of Object.keys(interfaces)) {
+            for (const iface of interfaces[name]) {
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    return iface.address;
+                }
+            }
+        }
+    } catch (e) {}
+    return '127.0.0.1';
+}
 
 function serveFile(res, filePath, contentType) {
     fs.readFile(filePath, (err, content) => {
         if (err) {
             if (err.code === 'ENOENT') {
                 res.writeHead(404, { 'Content-Type': 'text/html; charset=UTF-8' });
-                res.end('<h1>404 Not Found — VAST STUDIO</h1>', 'utf-8');
+                res.end('<div style="text-align:center; padding:50px; font-family:sans-serif;"><h1>404 Not Found — VAST STUDIO</h1><p>Trang hoặc tài nguyên không tồn tại.</p><a href="/">Quay về Trang Chủ</a></div>', 'utf-8');
             } else {
                 res.writeHead(500, { 'Content-Type': 'text/html; charset=UTF-8' });
                 res.end(`<h1>500 Server Error</h1><p>${err.code}</p>`, 'utf-8');
@@ -37,7 +57,8 @@ function serveFile(res, filePath, contentType) {
         } else {
             res.writeHead(200, { 
                 'Content-Type': contentType,
-                'Cache-Control': 'no-cache, no-store, must-revalidate'
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Access-Control-Allow-Origin': '*'
             });
             res.end(content, 'utf-8');
         }
@@ -47,7 +68,7 @@ function serveFile(res, filePath, contentType) {
 function startServer(port) {
     const server = http.createServer((req, res) => {
         const parsedUrl = url.parse(req.url);
-        let pathname = parsedUrl.pathname;
+        let pathname = decodeURIComponent(parsedUrl.pathname || '/');
 
         if (pathname === '/' || pathname === '') {
             pathname = '/index.html';
@@ -67,8 +88,16 @@ function startServer(port) {
 
         fs.stat(safePath, (err, stats) => {
             if (err || !stats.isFile()) {
-                // If requested a directory or non-existent file, fallback to index.html
-                serveFile(res, path.join(PUBLIC_DIR, 'index.html'), 'text/html; charset=UTF-8');
+                // If requesting html without extension (clean url, e.g. /checkout -> /checkout.html)
+                const cleanHtmlPath = safePath + '.html';
+                if (fs.existsSync(cleanHtmlPath)) {
+                    serveFile(res, cleanHtmlPath, 'text/html; charset=UTF-8');
+                } else if (!extname) {
+                    serveFile(res, path.join(PUBLIC_DIR, 'index.html'), 'text/html; charset=UTF-8');
+                } else {
+                    res.writeHead(404, { 'Content-Type': 'text/html; charset=UTF-8' });
+                    res.end('<h1>404 Not Found — VAST STUDIO</h1>', 'utf-8');
+                }
             } else {
                 serveFile(res, safePath, contentType);
             }
@@ -77,7 +106,7 @@ function startServer(port) {
 
     server.on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
-            console.log(`[VAST STUDIO] Port ${port} is in use, trying port ${port + 1}...`);
+            console.log(`[VAST STUDIO] Port ${port} is busy, trying port ${port + 1}...`);
             startServer(port + 1);
         } else {
             console.error('[VAST STUDIO] Server error:', err);
@@ -85,6 +114,7 @@ function startServer(port) {
     });
 
     server.listen(port, () => {
+        const localIP = getLocalIP();
         console.log('\n');
         console.log('╔═══════════════════════════════════════════════════════════════════╗');
         console.log('║                                                                   ║');
@@ -95,16 +125,20 @@ function startServer(port) {
         console.log('║          ╚████╔╝ ██║  ██║███████║   ██║     ███████║   ██║        ║');
         console.log('║           ╚═══╝  ╚═╝  ╚═╝╚══════╝   ╚═╝     ╚══════╝   ╚═╝        ║');
         console.log('║                                                                   ║');
-        console.log('║                HỆ THỐNG QUẢN TRỊ — VAST STUDIO                    ║');
+        console.log('║            MÁY CHỦ VAST STUDIO (KHÔNG CẦN LARAGON/XAMPP)          ║');
         console.log('║                                                                   ║');
         console.log(`║  ➜ Local:   http://localhost:${port}                                 ║`);
-        console.log('║  ➜ Network: Sẵn sàng phục vụ giao diện quản trị bán quần áo       ║');
+        console.log(`║  ➜ Network: http://${localIP}:${port} (Test qua Wi-Fi)              ║`);
         console.log('║                                                                   ║');
-        console.log('║  Nhấn Ctrl + C để dừng máy chủ.                                   ║');
+        console.log('║  • Trang chủ:   http://localhost:' + port + '/index.html                    ║');
+        console.log('║  • Quản trị:    http://localhost:' + port + '/admin.html                    ║');
+        console.log('║  • Thanh toán:  http://localhost:' + port + '/checkout.html                 ║');
+        console.log('║  • Thành viên:  http://localhost:' + port + '/auth.html                     ║');
+        console.log('║                                                                   ║');
+        console.log('║  Nhấn Ctrl + C để dừng server.                                    ║');
         console.log('╚═══════════════════════════════════════════════════════════════════╝');
         console.log('\n');
     });
 }
 
 startServer(DEFAULT_PORT);
-
