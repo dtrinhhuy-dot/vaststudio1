@@ -695,9 +695,103 @@
             return colData;
         }
 
-        // --- CUSTOMER MODEL METHODS ---
+        // --- CUSTOMER MODEL & AUTH METHODS ---
         getCustomers() {
             return JSON.parse(localStorage.getItem(STORAGE_KEYS.CUSTOMERS) || '[]');
+        }
+
+        getCurrentUser() {
+            try {
+                return JSON.parse(localStorage.getItem('vast_auth_user') || 'null');
+            } catch (e) {
+                return null;
+            }
+        }
+
+        setCurrentUser(user) {
+            if (user) {
+                localStorage.setItem('vast_auth_user', JSON.stringify(user));
+            } else {
+                localStorage.removeItem('vast_auth_user');
+            }
+            window.dispatchEvent(new CustomEvent('vast:auth-updated', { detail: user }));
+        }
+
+        registerCustomer({ name, email, phone, password }) {
+            const customers = this.getCustomers();
+            const cleanEmail = (email || '').trim().toLowerCase();
+            const cleanPhone = (phone || '').replace(/\s+/g, '');
+
+            if (customers.some(c => (c.email || '').toLowerCase() === cleanEmail)) {
+                return { success: false, message: 'Email này đã được sử dụng. Vui lòng chọn đăng nhập!' };
+            }
+            if (customers.some(c => (c.phone || '').replace(/\s+/g, '') === cleanPhone)) {
+                return { success: false, message: 'Số điện thoại này đã được đăng ký tài khoản!' };
+            }
+
+            const newCustomer = {
+                id: 'CUS-' + (Math.floor(100 + Math.random() * 900)),
+                name: name.trim(),
+                email: cleanEmail,
+                phone: cleanPhone,
+                password: password || '123456',
+                city: 'Hà Nội',
+                tier: 'Standard',
+                ordersCount: 0,
+                totalSpent: 0,
+                registeredAt: new Date().toISOString().split('T')[0],
+                avatar: ''
+            };
+
+            customers.unshift(newCustomer);
+            localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
+            this.setCurrentUser(newCustomer);
+            return { success: true, user: newCustomer };
+        }
+
+        loginCustomer(identifier, password) {
+            const customers = this.getCustomers();
+            const cleanId = (identifier || '').trim().toLowerCase();
+            const cleanPhone = (identifier || '').replace(/\s+/g, '');
+
+            const user = customers.find(c => 
+                (c.email && c.email.toLowerCase() === cleanId) || 
+                (c.phone && c.phone.replace(/\s+/g, '') === cleanPhone)
+            );
+
+            if (!user) {
+                return { success: false, message: 'Tài khoản không tồn tại trên hệ thống VAST STUDIO!' };
+            }
+
+            // Default seed customer password: 123456
+            const validPassword = user.password || '123456';
+            if (password !== validPassword) {
+                return { success: false, message: 'Mật khẩu không chính xác. Mật khẩu mặc định tài khoản mẫu là 123456' };
+            }
+
+            this.setCurrentUser(user);
+            return { success: true, user };
+        }
+
+        logoutCustomer() {
+            this.setCurrentUser(null);
+            return { success: true };
+        }
+
+        updateCustomerProfile(id, updatedData) {
+            const customers = this.getCustomers();
+            const index = customers.findIndex(c => c.id === id);
+            if (index > -1) {
+                customers[index] = { ...customers[index], ...updatedData };
+                localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
+                
+                const current = this.getCurrentUser();
+                if (current && current.id === id) {
+                    this.setCurrentUser(customers[index]);
+                }
+                return { success: true, user: customers[index] };
+            }
+            return { success: false, message: 'Không tìm thấy người dùng' };
         }
 
         // --- COUPON MODEL METHODS ---

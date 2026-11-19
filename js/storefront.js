@@ -55,6 +55,8 @@
                 this.initOrderTrackingPage();
             } else if (path.endsWith('checkout.html')) {
                 this.initCheckoutPage();
+            } else if (path.endsWith('auth.html') || path.endsWith('login.html')) {
+                this.initAuthPage();
             } else if (path.endsWith('about.html') || path.endsWith('contact.html')) {
                 // Info pages: general bindings
             } else {
@@ -107,6 +109,11 @@
                 this.renderWishlistDrawer();
             });
 
+            // Auth update events
+            window.addEventListener('vast:auth-updated', () => {
+                this.updateAuthHeader();
+            });
+
             // ESC key to close any active modal
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
@@ -147,6 +154,21 @@
                     wishlistBadge.textContent = wishlist.length;
                     wishlistBadge.style.display = wishlist.length > 0 ? 'flex' : 'none';
                 }
+
+                this.updateAuthHeader();
+            }
+        },
+
+        updateAuthHeader() {
+            const authBtn = document.getElementById('header-auth-btn');
+            if (!authBtn || !window.StoreModel) return;
+
+            const user = window.StoreModel.getCurrentUser();
+            if (user) {
+                const initial = (user.name || 'U').trim().charAt(0).toUpperCase();
+                authBtn.innerHTML = `<span class="header-user-avatar" title="${user.name} (${user.tier || 'Thành viên'})">${initial}</span>`;
+            } else {
+                authBtn.innerHTML = window.ICONS?.user || `<span data-icon="user"></span>`;
             }
         },
 
@@ -1230,11 +1252,21 @@
                 return;
             }
 
-            // 2. Load saved customer info if available
+            // 2. Load saved customer info or logged in user
             let savedCustomer = {};
-            try {
-                savedCustomer = JSON.parse(localStorage.getItem('vast_customer_info') || '{}');
-            } catch (err) {}
+            const loggedInUser = window.StoreModel.getCurrentUser();
+            if (loggedInUser) {
+                savedCustomer = {
+                    name: loggedInUser.name,
+                    phone: loggedInUser.phone,
+                    email: loggedInUser.email,
+                    city: loggedInUser.city || 'Hà Nội'
+                };
+            } else {
+                try {
+                    savedCustomer = JSON.parse(localStorage.getItem('vast_customer_info') || '{}');
+                } catch (err) {}
+            }
 
             // 3. Render 2-column checkout layout
             container.innerHTML = `
@@ -2052,6 +2084,576 @@
             }).catch(() => {
                 this.showToast('Đã sao chép: ' + text, 'info');
             });
+        },
+
+        // ======================================================================
+        // TRANG THÀNH VIÊN & XÁC THỰC (AUTHENTICATION & PROFILE DASHBOARD)
+        // ======================================================================
+        initAuthPage() {
+            const container = document.getElementById('auth-main-container');
+            if (!container) return;
+            if (!window.StoreModel) return;
+
+            const currentUser = window.StoreModel.getCurrentUser();
+            if (currentUser) {
+                this.renderCustomerDashboard(currentUser);
+            } else {
+                this.renderAuthForms('login');
+            }
+        },
+
+        renderAuthForms(activeTab = 'login') {
+            const container = document.getElementById('auth-main-container');
+            if (!container) return;
+
+            const currentBreadcrumb = document.getElementById('auth-breadcrumb-current');
+            if (currentBreadcrumb) currentBreadcrumb.textContent = 'Đăng nhập / Đăng ký';
+
+            container.innerHTML = `
+                <div class="auth-box-wrapper">
+                    <div class="auth-card">
+                        <div class="auth-card-header">
+                            <div class="auth-brand-monogram">V</div>
+                            <h1 class="auth-main-title">VAST MEMBERSHIP</h1>
+                            <p class="auth-sub-title">Đặc quyền tích điểm & ưu đãi thành viên thương hiệu</p>
+                        </div>
+
+                        <!-- Tab Switcher -->
+                        <div class="auth-tabs-nav">
+                            <button type="button" class="auth-tab-btn ${activeTab === 'login' ? 'active' : ''}" 
+                                    id="tab-btn-login" onclick="Storefront.switchAuthTab('login')">
+                                Đăng Nhập
+                            </button>
+                            <button type="button" class="auth-tab-btn ${activeTab === 'register' ? 'active' : ''}" 
+                                    id="tab-btn-register" onclick="Storefront.switchAuthTab('register')">
+                                Đăng Ký Tài Khoản
+                            </button>
+                        </div>
+
+                        <div class="auth-form-body">
+                            <!-- TAB PANE 1: ĐĂNG NHẬP -->
+                            <div class="auth-form-pane ${activeTab === 'login' ? 'active' : ''}" id="auth-pane-login">
+                                <form onsubmit="Storefront.handleLoginSubmit(event)">
+                                    <div class="auth-input-group">
+                                        <label class="auth-label">Email hoặc Số điện thoại <span style="color:var(--store-red)">*</span></label>
+                                        <div class="auth-input-wrap">
+                                            <input type="text" id="login-identifier" class="auth-input" 
+                                                   placeholder="Nhập email hoặc số điện thoại..." required>
+                                        </div>
+                                    </div>
+
+                                    <div class="auth-input-group">
+                                        <label class="auth-label">Mật khẩu <span style="color:var(--store-red)">*</span></label>
+                                        <div class="auth-input-wrap">
+                                            <input type="password" id="login-password" class="auth-input" 
+                                                   placeholder="Nhập mật khẩu..." required>
+                                            <button type="button" class="btn-toggle-eye" onclick="Storefront.togglePasswordVisibility('login-password', this)">
+                                                <span data-icon="eye"></span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="auth-extra-row">
+                                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                            <input type="checkbox" id="login-remember" style="accent-color:var(--store-gold); cursor:pointer;" checked>
+                                            <span style="color:var(--text-secondary);">Ghi nhớ đăng nhập</span>
+                                        </label>
+                                        <a class="auth-forgot-link" onclick="Storefront.handleForgotPassword()">Quên mật khẩu?</a>
+                                    </div>
+
+                                    <button type="submit" class="btn-auth-submit">
+                                        <span>Đăng Nhập Ngay</span>
+                                        <span data-icon="arrowRight"></span>
+                                    </button>
+                                </form>
+
+                                <!-- Demo Accounts Quick Fill -->
+                                <div class="auth-demo-card">
+                                    <div style="font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">
+                                        ⚡ Trải nghiệm nhanh với tài khoản mẫu (Click để đăng nhập):
+                                    </div>
+                                    <div class="demo-pills-list">
+                                        <button type="button" class="demo-account-btn" onclick="Storefront.fillDemoAccount('hoangminh.design@gmail.com', '123456')">
+                                            <div>
+                                                <strong>Nguyễn Hoàng Minh</strong>
+                                                <div style="font-size:0.72rem; color:var(--text-muted);">hoangminh.design@gmail.com</div>
+                                            </div>
+                                            <span class="method-badge-rec">VIP Black Card</span>
+                                        </button>
+                                        <button type="button" class="demo-account-btn" onclick="Storefront.fillDemoAccount('thaoly.tran@outlook.com', '123456')">
+                                            <div>
+                                                <strong>Trần Thảo Ly</strong>
+                                                <div style="font-size:0.72rem; color:var(--text-muted);">thaoly.tran@outlook.com</div>
+                                            </div>
+                                            <span class="method-badge-rec" style="background:rgba(217, 119, 6, 0.1);">Gold Member</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="auth-divider-line">
+                                    <span>Hoặc đăng nhập với</span>
+                                </div>
+
+                                <div class="social-auth-grid">
+                                    <button type="button" class="btn-social-auth" onclick="Storefront.handleSocialLogin('Google')">
+                                        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.54 0 2.94.55 4.04 1.45l3.03-3.03C17.24 1.7 14.77 1 12 1 7.42 1 3.52 3.55 1.57 7.28l3.66 2.84C6.1 7.22 8.8 5 12 5z"/><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58l3.7 2.87c2.16-2 3.72-4.94 3.72-8.69z"/><path fill="#FBBC05" d="M5.23 14.88c-.25-.72-.38-1.49-.38-2.28s.13-1.56.38-2.28L1.57 7.28C.57 9.17 0 11.28 0 12.6s.57 3.43 1.57 5.32l3.66-2.84z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.7-2.87c-1.08.72-2.45 1.16-4.23 1.16-3.2 0-5.9-2.22-6.77-5.12L1.57 17.1C3.52 20.83 7.42 24 12 24z"/></svg>
+                                        Google
+                                    </button>
+                                    <button type="button" class="btn-social-auth" onclick="Storefront.handleSocialLogin('Apple')">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.93-2.85-.9.04-2 .6-2.65 1.35-.58.67-1.09 1.74-.95 2.78 1.01.08 2.05-.53 2.67-1.28"/></svg>
+                                        Apple ID
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- TAB PANE 2: ĐĂNG KÝ -->
+                            <div class="auth-form-pane ${activeTab === 'register' ? 'active' : ''}" id="auth-pane-register">
+                                <form onsubmit="Storefront.handleRegisterSubmit(event)">
+                                    <div class="membership-incentive-box">
+                                        <span style="font-size:1.4rem;">🎁</span>
+                                        <div>
+                                            <strong>Ưu đãi thành viên mới:</strong><br>
+                                            Tặng ngay voucher <strong>VASTWELCOME</strong> giảm 100K cho đơn hàng đầu tiên!
+                                        </div>
+                                    </div>
+
+                                    <div class="auth-input-group">
+                                        <label class="auth-label">Họ và tên của bạn <span style="color:var(--store-red)">*</span></label>
+                                        <div class="auth-input-wrap">
+                                            <input type="text" id="reg-name" class="auth-input" 
+                                                   placeholder="Ví dụ: Lê Hoàng Nam" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="auth-input-group">
+                                        <label class="auth-label">Số điện thoại <span style="color:var(--store-red)">*</span></label>
+                                        <div class="auth-input-wrap">
+                                            <input type="tel" id="reg-phone" class="auth-input" 
+                                                   placeholder="Ví dụ: 0912 345 678" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="auth-input-group">
+                                        <label class="auth-label">Địa chỉ Email <span style="color:var(--store-red)">*</span></label>
+                                        <div class="auth-input-wrap">
+                                            <input type="email" id="reg-email" class="auth-input" 
+                                                   placeholder="email@example.com" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="auth-input-group">
+                                        <label class="auth-label">Mật khẩu (tối thiểu 6 ký tự) <span style="color:var(--store-red)">*</span></label>
+                                        <div class="auth-input-wrap">
+                                            <input type="password" id="reg-password" class="auth-input" 
+                                                   placeholder="Tạo mật khẩu an toàn..." required minlength="6">
+                                            <button type="button" class="btn-toggle-eye" onclick="Storefront.togglePasswordVisibility('reg-password', this)">
+                                                <span data-icon="eye"></span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="auth-input-group">
+                                        <label class="auth-label">Nhập lại mật khẩu <span style="color:var(--store-red)">*</span></label>
+                                        <div class="auth-input-wrap">
+                                            <input type="password" id="reg-confirm-password" class="auth-input" 
+                                                   placeholder="Xác nhận lại mật khẩu..." required minlength="6">
+                                            <button type="button" class="btn-toggle-eye" onclick="Storefront.togglePasswordVisibility('reg-confirm-password', this)">
+                                                <span data-icon="eye"></span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="auth-input-group" style="margin-bottom:24px;">
+                                        <label style="display:flex; align-items:flex-start; gap:8px; font-size:0.8rem; color:var(--text-secondary); cursor:pointer;">
+                                            <input type="checkbox" id="reg-terms" style="margin-top:2px; accent-color:var(--store-gold); cursor:pointer;" required>
+                                            <span>Tôi đồng ý với <a href="about.html" target="_blank" style="color:var(--store-gold); font-weight:600;">Điều khoản thành viên</a> & <a href="about.html" target="_blank" style="color:var(--store-gold); font-weight:600;">Chính sách bảo mật</a> của VAST STUDIO.</span>
+                                        </label>
+                                    </div>
+
+                                    <button type="submit" class="btn-auth-submit">
+                                        <span>Tạo Tài Khoản VAST VIP</span>
+                                        <span data-icon="arrowRight"></span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (window.ICONS) {
+                container.querySelectorAll('[data-icon]').forEach(el => {
+                    const iconName = el.getAttribute('data-icon');
+                    if (window.ICONS[iconName]) el.innerHTML = window.ICONS[iconName];
+                });
+            }
+        },
+
+        switchAuthTab(tab) {
+            const btnLogin = document.getElementById('tab-btn-login');
+            const btnReg = document.getElementById('tab-btn-register');
+            const paneLogin = document.getElementById('auth-pane-login');
+            const paneReg = document.getElementById('auth-pane-register');
+
+            if (tab === 'login') {
+                btnLogin?.classList.add('active');
+                btnReg?.classList.remove('active');
+                paneLogin?.classList.add('active');
+                paneReg?.classList.remove('active');
+            } else {
+                btnReg?.classList.add('active');
+                btnLogin?.classList.remove('active');
+                paneReg?.classList.add('active');
+                paneLogin?.classList.remove('active');
+            }
+        },
+
+        togglePasswordVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            if (btn) {
+                btn.style.color = isPassword ? 'var(--store-gold)' : 'var(--text-muted)';
+            }
+        },
+
+        fillDemoAccount(identifier, pwd) {
+            this.switchAuthTab('login');
+            const idInput = document.getElementById('login-identifier');
+            const pwdInput = document.getElementById('login-password');
+            if (idInput && pwdInput) {
+                idInput.value = identifier;
+                pwdInput.value = pwd;
+                this.showToast(`Đã tự động điền tài khoản: ${identifier}`, 'info');
+                // Auto trigger login
+                const fakeEvent = { preventDefault: () => {} };
+                this.handleLoginSubmit(fakeEvent);
+            }
+        },
+
+        handleLoginSubmit(e) {
+            if (e) e.preventDefault();
+            if (!window.StoreModel) return;
+
+            const identifier = document.getElementById('login-identifier')?.value.trim();
+            const password = document.getElementById('login-password')?.value;
+
+            if (!identifier || !password) {
+                this.showToast('Vui lòng nhập đầy đủ thông tin đăng nhập!', 'error');
+                return;
+            }
+
+            const res = window.StoreModel.loginCustomer(identifier, password);
+            if (res.success) {
+                this.showToast(`Chào mừng bạn quay trở lại, ${res.user.name}!`, 'success');
+                
+                // Check if redirected from checkout
+                const params = new URLSearchParams(window.location.search);
+                const redirect = params.get('redirect');
+                if (redirect) {
+                    window.location.href = redirect;
+                    return;
+                }
+
+                this.renderCustomerDashboard(res.user);
+            } else {
+                this.showToast(res.message, 'error');
+            }
+        },
+
+        handleRegisterSubmit(e) {
+            if (e) e.preventDefault();
+            if (!window.StoreModel) return;
+
+            const name = document.getElementById('reg-name')?.value.trim();
+            const phone = document.getElementById('reg-phone')?.value.trim();
+            const email = document.getElementById('reg-email')?.value.trim();
+            const password = document.getElementById('reg-password')?.value;
+            const confirmPassword = document.getElementById('reg-confirm-password')?.value;
+
+            if (!name || !phone || !email || !password || !confirmPassword) {
+                this.showToast('Vui lòng điền đầy đủ các thông tin bắt buộc!', 'error');
+                return;
+            }
+
+            const cleanPhone = phone.replace(/[\s.-]/g, '');
+            if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(cleanPhone)) {
+                this.showToast('Số điện thoại không hợp lệ (cần 10 chữ số)!', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                this.showToast('Mật khẩu phải chứa ít nhất 6 ký tự!', 'error');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                this.showToast('Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại!', 'error');
+                return;
+            }
+
+            const res = window.StoreModel.registerCustomer({
+                name, phone: cleanPhone, email, password
+            });
+
+            if (res.success) {
+                this.showToast(`Đăng ký thành công! Chào mừng thành viên mới ${res.user.name}.`, 'success');
+                this.renderCustomerDashboard(res.user);
+            } else {
+                this.showToast(res.message, 'error');
+            }
+        },
+
+        handleForgotPassword() {
+            const emailOrPhone = prompt('Nhập địa chỉ Email hoặc Số điện thoại để nhận mã khôi phục mật khẩu:');
+            if (emailOrPhone && emailOrPhone.trim()) {
+                this.showToast(`Hệ thống đã gửi liên kết đặt lại mật khẩu đến: ${emailOrPhone.trim()}`, 'success');
+            }
+        },
+
+        handleSocialLogin(provider) {
+            this.showToast(`Đang kết nối xác thực an toàn qua ${provider}...`, 'info');
+            setTimeout(() => {
+                const dummyUser = {
+                    id: 'CUS-' + Math.floor(100 + Math.random() * 900),
+                    name: provider === 'Google' ? 'Khách Google' : 'Khách Apple',
+                    email: `user.${provider.toLowerCase()}@vaststudio.vn`,
+                    phone: '0988 123 456',
+                    city: 'Hà Nội',
+                    tier: 'Standard',
+                    ordersCount: 1,
+                    totalSpent: 380000
+                };
+                window.StoreModel.setCurrentUser(dummyUser);
+                this.showToast(`Đăng nhập thành công qua ${provider}!`, 'success');
+                this.renderCustomerDashboard(dummyUser);
+            }, 800);
+        },
+
+        handleLogout() {
+            if (!confirm('Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?')) return;
+            if (window.StoreModel) {
+                window.StoreModel.logoutCustomer();
+                this.showToast('Đã đăng xuất tài khoản thành công', 'info');
+                this.renderAuthForms('login');
+            }
+        },
+
+        renderCustomerDashboard(user) {
+            const container = document.getElementById('auth-main-container');
+            if (!container) return;
+
+            const currentBreadcrumb = document.getElementById('auth-breadcrumb-current');
+            if (currentBreadcrumb) currentBreadcrumb.textContent = `Tài khoản (${user.name})`;
+
+            // Fetch user orders matching phone or email
+            const allOrders = window.StoreModel ? window.StoreModel.getOrders() : [];
+            const cleanPhone = (user.phone || '').replace(/\s+/g, '');
+            const cleanEmail = (user.email || '').toLowerCase().trim();
+
+            const userOrders = allOrders.filter(o => 
+                (cleanPhone && (o.customerPhone || '').replace(/\s+/g, '').includes(cleanPhone)) ||
+                (cleanEmail && (o.customerEmail || '').toLowerCase().trim() === cleanEmail)
+            );
+
+            const initial = (user.name || 'U').trim().charAt(0).toUpperCase();
+            const totalOrders = userOrders.length || user.ordersCount || 0;
+            const totalSpent = userOrders.reduce((sum, o) => sum + (o.total || 0), 0) || user.totalSpent || 0;
+
+            container.innerHTML = `
+                <div class="profile-dashboard-layout">
+                    <!-- LEFT SIDEBAR: USER INFO -->
+                    <div class="profile-card-base profile-user-card">
+                        <div class="profile-avatar-circle">${initial}</div>
+                        <h2 class="profile-user-name">${user.name}</h2>
+                        <div class="profile-user-meta">
+                            <div>${user.email || 'Chưa cập nhật email'}</div>
+                            <div>${user.phone || ''}</div>
+                        </div>
+                        <div class="profile-tier-badge">
+                            <span>⭐</span> ${user.tier || 'Thành viên Standard'}
+                        </div>
+
+                        <div class="profile-stats-grid">
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-val">${totalOrders}</div>
+                                <div class="profile-stat-lbl">Đơn hàng đã đặt</div>
+                            </div>
+                            <div class="profile-stat-item">
+                                <div class="profile-stat-val" style="color:var(--store-gold);">${this.formatMoney(totalSpent)}</div>
+                                <div class="profile-stat-lbl">Tổng chi tiêu</div>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn-profile-logout" onclick="Storefront.handleLogout()">
+                            <span data-icon="xCircle"></span> Đăng Xuất Tài Khoản
+                        </button>
+                    </div>
+
+                    <!-- RIGHT MAIN CONTENT: ORDERS & SETTINGS -->
+                    <div class="profile-content-area">
+                        <!-- SECTION 1: RECENT ORDERS -->
+                        <div class="profile-card-base profile-section-card">
+                            <div class="profile-section-title">
+                                <span>Đơn Hàng Gần Đây Của Bạn (${userOrders.length})</span>
+                                <a href="order-tracking.html" style="font-size:0.8rem; color:var(--store-gold); text-decoration:none; font-weight:600;">
+                                    Tra cứu chi tiết →
+                                </a>
+                            </div>
+
+                            ${userOrders.length === 0 ? `
+                                <div style="text-align:center; padding:32px 16px; color:var(--text-muted);">
+                                    <div style="font-size:2.5rem; margin-bottom:8px;">📦</div>
+                                    <h4 style="margin:0 0 6px; color:var(--text-primary); font-family:var(--store-font-heading);">Chưa có đơn hàng nào</h4>
+                                    <p style="font-size:0.85rem; margin:0 0 16px;">Khám phá bộ sưu tập streetwear mới nhất và đặt hàng ngay.</p>
+                                    <a href="products.html" class="btn-hero-primary" style="display:inline-block; padding:10px 22px; font-size:0.85rem; text-decoration:none;">
+                                        Mua sắm ngay
+                                    </a>
+                                </div>
+                            ` : `
+                                <div class="profile-orders-list">
+                                    ${userOrders.map(order => {
+                                        let statusBadge = '<span class="status-badge status-pending">Chờ xử lý</span>';
+                                        if (order.orderStatus === 'processing') statusBadge = '<span class="status-badge status-processing">Đang đóng gói</span>';
+                                        else if (order.orderStatus === 'shipping') statusBadge = '<span class="status-badge status-shipping">Đang giao hàng</span>';
+                                        else if (order.orderStatus === 'completed') statusBadge = '<span class="status-badge status-completed">Đã giao thành công</span>';
+                                        else if (order.orderStatus === 'cancelled') statusBadge = '<span class="status-badge status-cancelled">Đã hủy</span>';
+
+                                        const itemsSummary = (order.items || []).map(i => `${i.name} (x${i.quantity})`).join(', ');
+
+                                        return `
+                                            <div class="profile-order-card">
+                                                <div class="profile-order-top">
+                                                    <div>
+                                                        <span class="profile-order-id">${order.id}</span>
+                                                        <span style="font-size:0.75rem; color:var(--text-muted); margin-left:8px;">${order.createdAt || ''}</span>
+                                                    </div>
+                                                    <div>${statusBadge}</div>
+                                                </div>
+                                                <div class="profile-order-items-snippet">
+                                                    <strong>Sản phẩm:</strong> ${itemsSummary || 'Chi tiết đơn hàng'}
+                                                </div>
+                                                <div class="profile-order-footer">
+                                                    <div>
+                                                        <span style="color:var(--text-muted);">Tổng tiền:</span>
+                                                        <strong style="font-family:var(--store-font-heading); color:var(--store-gold); font-size:1.05rem; margin-left:4px;">
+                                                            ${this.formatMoney(order.total)}
+                                                        </strong>
+                                                    </div>
+                                                    <a href="order-tracking.html?order=${order.id}" class="btn-card-addcart" style="text-decoration:none; padding:6px 14px; font-size:0.8rem;">
+                                                        Theo dõi đơn
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            `}
+                        </div>
+
+                        <!-- SECTION 2: MEMBER VOUCHERS -->
+                        <div class="profile-card-base profile-section-card">
+                            <div class="profile-section-title">
+                                <span>Kho Voucher Ưu Đãi Của Bạn</span>
+                                <span class="method-badge-rec">Đặc Quyền VIP</span>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+                                <div style="background:var(--bg-subtle); border:1px dashed var(--store-gold); border-radius:var(--radius-md); padding:14px; display:flex; justify-content:space-between; align-items:center;">
+                                    <div>
+                                        <strong style="font-family:monospace; color:var(--store-gold); font-size:1.05rem;">VASTWELCOME</strong>
+                                        <div style="font-size:0.78rem; color:var(--text-secondary); margin-top:2px;">Giảm 100K cho đơn từ 500K</div>
+                                    </div>
+                                    <button type="button" class="coupon-pill-btn" onclick="Storefront.copyToClipboard('VASTWELCOME', 'Đã sao chép mã giảm giá!')">
+                                        Sao chép
+                                    </button>
+                                </div>
+
+                                <div style="background:var(--bg-subtle); border:1px dashed var(--store-emerald); border-radius:var(--radius-md); padding:14px; display:flex; justify-content:space-between; align-items:center;">
+                                    <div>
+                                        <strong style="font-family:monospace; color:var(--store-emerald); font-size:1.05rem;">FREESHIP</strong>
+                                        <div style="font-size:0.78rem; color:var(--text-secondary); margin-top:2px;">Miễn phí ship toàn quốc</div>
+                                    </div>
+                                    <button type="button" class="coupon-pill-btn" onclick="Storefront.copyToClipboard('FREESHIP', 'Đã sao chép mã giảm giá!')">
+                                        Sao chép
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 3: EDIT PROFILE -->
+                        <div class="profile-card-base profile-section-card">
+                            <div class="profile-section-title">
+                                <span>Cập Nhật Thông Tin Cá Nhân</span>
+                            </div>
+
+                            <form onsubmit="Storefront.handleProfileUpdate(event)">
+                                <div class="checkout-form-grid">
+                                    <div>
+                                        <label class="checkout-label">Họ và tên</label>
+                                        <input type="text" id="prof-name" class="checkout-input" value="${user.name || ''}" required>
+                                    </div>
+                                    <div>
+                                        <label class="checkout-label">Số điện thoại</label>
+                                        <input type="tel" id="prof-phone" class="checkout-input" value="${user.phone || ''}" required>
+                                    </div>
+                                    <div>
+                                        <label class="checkout-label">Email</label>
+                                        <input type="email" id="prof-email" class="checkout-input" value="${user.email || ''}" required>
+                                    </div>
+                                    <div>
+                                        <label class="checkout-label">Tỉnh / Thành phố sinh sống</label>
+                                        <input type="text" id="prof-city" class="checkout-input" value="${user.city || 'Hà Nội'}">
+                                    </div>
+                                </div>
+
+                                <div style="margin-top:18px; text-align:right;">
+                                    <button type="submit" class="btn-hero-primary" style="padding:12px 24px; font-size:0.88rem;">
+                                        Lưu Thay Đổi
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (window.ICONS) {
+                container.querySelectorAll('[data-icon]').forEach(el => {
+                    const iconName = el.getAttribute('data-icon');
+                    if (window.ICONS[iconName]) el.innerHTML = window.ICONS[iconName];
+                });
+            }
+        },
+
+        handleProfileUpdate(e) {
+            if (e) e.preventDefault();
+            if (!window.StoreModel) return;
+
+            const currentUser = window.StoreModel.getCurrentUser();
+            if (!currentUser) return;
+
+            const name = document.getElementById('prof-name')?.value.trim();
+            const phone = document.getElementById('prof-phone')?.value.trim();
+            const email = document.getElementById('prof-email')?.value.trim();
+            const city = document.getElementById('prof-city')?.value.trim();
+
+            if (!name || !phone || !email) {
+                this.showToast('Vui lòng không để trống thông tin cá nhân!', 'error');
+                return;
+            }
+
+            const res = window.StoreModel.updateCustomerProfile(currentUser.id, {
+                name, phone, email, city
+            });
+
+            if (res.success) {
+                this.showToast('Cập nhật thông tin tài khoản thành công!', 'success');
+                this.renderCustomerDashboard(res.user);
+            } else {
+                this.showToast(res.message, 'error');
+            }
         },
 
         // ======================================================================
