@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi" data-theme="dark">
 <head>
     <meta charset="UTF-8">
@@ -128,7 +128,7 @@
                         <span class="notif-badge"></span>
                     </button>
 
-                    <a href="index.html" class="btn-secondary" style="text-decoration: none;" title="Xem Cửa hàng Trực tuyến" target="_blank">
+                    <a href="index.php" class="btn-secondary" style="text-decoration: none;" title="Xem Cửa hàng Trực tuyến" target="_blank">
                         <span data-icon="store"></span>
                         <span>Xem Cửa hàng</span>
                     </a>
@@ -855,4 +855,5 @@
     <script src="js/app.js"></script>
 </body>
 </html>
+
 

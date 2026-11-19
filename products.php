@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi" data-theme="dark">
 <head>
     <meta charset="UTF-8">
@@ -21,13 +21,13 @@
                     <span>Nhập mã <span class="announcement-code" onclick="Storefront.copyCoupon('VASTWELCOME')" title="Nhấp để sao chép mã">VASTWELCOME</span> giảm ngay 100K</span>
                 </div>
                 <div class="announcement-links">
-                    <a href="order-tracking.html" class="announcement-link">
+                    <a href="order-tracking.php" class="announcement-link">
                         <span data-icon="truck"></span> Tra cứu đơn hàng
                     </a>
                     <span class="announcement-link">
                         <span data-icon="phone"></span> Hotline: 0988.123.456
                     </span>
-                    <a href="admin.html" class="admin-access-badge" title="Chuyển đến Trang Quản Trị Cửa Hàng">
+                    <a href="admin.php" class="admin-access-badge" title="Chuyển đến Trang Quản Trị Cửa Hàng">
                         <span data-icon="dashboard"></span> Trang Quản Trị
                     </a>
                 </div>
@@ -40,7 +40,7 @@
         <div class="store-container">
             <div class="store-header-inner">
                 <!-- Brand Monogram & Name -->
-                <a href="index.html" class="store-brand">
+                <a href="index.php" class="store-brand">
                     <div class="brand-monogram">V</div>
                     <div class="brand-text-block">
                         <span class="brand-main-title">VAST STUDIO</span>
@@ -51,11 +51,11 @@
                 <!-- Nav Menu Links -->
                 <nav>
                     <ul class="store-nav-menu">
-                        <li><a href="index.html" class="nav-link">Trang chủ</a></li>
-                        <li><a href="products.html" class="nav-link active">Sản phẩm <span class="nav-badge-hot">Hot</span></a></li>
-                        <li><a href="about.html" class="nav-link">Giới thiệu</a></li>
-                        <li><a href="order-tracking.html" class="nav-link">Tra cứu đơn</a></li>
-                        <li><a href="contact.html" class="nav-link">Liên hệ & Store</a></li>
+                        <li><a href="index.php" class="nav-link">Trang chủ</a></li>
+                        <li><a href="products.php" class="nav-link active">Sản phẩm <span class="nav-badge-hot">Hot</span></a></li>
+                        <li><a href="about.php" class="nav-link">Giới thiệu</a></li>
+                        <li><a href="order-tracking.php" class="nav-link">Tra cứu đơn</a></li>
+                        <li><a href="contact.php" class="nav-link">Liên hệ & Store</a></li>
                     </ul>
                 </nav>
 
@@ -80,11 +80,11 @@
                         <span class="action-badge" id="header-cart-badge" style="display: none;">0</span>
                     </button>
 
-                    <a href="auth.html" class="action-icon-btn" id="header-auth-btn" title="Tài khoản thành viên">
+                    <a href="auth.php" class="action-icon-btn" id="header-auth-btn" title="Tài khoản thành viên">
                         <span data-icon="user"></span>
                     </a>
 
-                    <a href="admin.html" class="action-icon-btn" title="Quản trị Shop" style="margin-left: 4px;">
+                    <a href="admin.php" class="action-icon-btn" title="Quản trị Shop" style="margin-left: 4px;">
                         <span data-icon="settings"></span>
                     </a>
 
@@ -101,9 +101,9 @@
         <div class="store-container">
             <!-- Breadcrumbs -->
             <nav class="breadcrumbs" aria-label="Breadcrumb">
-                <a href="index.html">Trang chủ</a>
+                <a href="index.php">Trang chủ</a>
                 <span>/</span>
-                <a href="products.html">Cửa hàng thời trang</a>
+                <a href="products.php">Cửa hàng thời trang</a>
                 <span>/</span>
                 <span style="color: var(--text-primary); font-weight: 600;">Danh sách sản phẩm</span>
             </nav>
@@ -307,7 +307,7 @@
                 <div>
                     <h4 class="footer-col-title">Khám Phá Shop</h4>
                     <ul class="footer-links">
-                        <li><a href="products.html" class="footer-link">Tất cả sản phẩm</a></li>
+                        <li><a href="products.php" class="footer-link">Tất cả sản phẩm</a></li>
                         <li><a href="products.html?category=Áo thun" class="footer-link">Áo thun Heavyweight</a></li>
                         <li><a href="products.html?category=Áo sơ mi" class="footer-link">Áo sơ mi Oxford</a></li>
                         <li><a href="products.html?category=Quần" class="footer-link">Quần Parachute & Denim</a></li>
@@ -331,7 +331,7 @@
                     <p style="font-size: 0.85rem; color: #a1a1aa; line-height: 1.5; margin-bottom: 16px;">
                         Hệ thống kết nối trực tiếp với Trung tâm Quản trị Cửa hàng (Admin Portal). Quản trị viên có thể theo dõi đơn hàng, quản lý kho sản phẩm và doanh số.
                     </p>
-                    <a href="admin.html" class="footer-admin-btn">
+                    <a href="admin.php" class="footer-admin-btn">
                         <span data-icon="dashboard"></span>
                         <span>Đến Trang Quản Trị Cửa Hàng</span>
                     </a>
@@ -597,3 +597,4 @@
     </script>
 </body>
 </html>
+

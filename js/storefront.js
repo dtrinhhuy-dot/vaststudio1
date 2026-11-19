@@ -1,4 +1,4 @@
-// ==========================================================================
+﻿// ==========================================================================
 // VAST STUDIO — STOREFRONT CONTROLLER & VIEW LOGIC
 // File: js/storefront.js
 // Modern Streetwear E-Commerce Client Architecture (Complete Suite)
@@ -47,17 +47,17 @@
 
             // Detect current page
             const path = window.location.pathname.toLowerCase();
-            if (path.endsWith('products.html') || path.endsWith('shop.html')) {
+            if ((path.endsWith('products.php') || path.endsWith('products.php')) || path.endsWith('shop.html')) {
                 this.initShopPage();
-            } else if (path.endsWith('product-detail.html')) {
+            } else if ((path.endsWith('product-detail.php') || path.endsWith('product-detail.php'))) {
                 this.initProductDetailPage();
-            } else if (path.endsWith('order-tracking.html')) {
+            } else if ((path.endsWith('order-tracking.php') || path.endsWith('order-tracking.php'))) {
                 this.initOrderTrackingPage();
-            } else if (path.endsWith('checkout.html')) {
+            } else if ((path.endsWith('checkout.php') || path.endsWith('checkout.php'))) {
                 this.initCheckoutPage();
-            } else if (path.endsWith('auth.html') || path.endsWith('login.html')) {
+            } else if ((path.endsWith('auth.php') || path.endsWith('auth.php')) || path.endsWith('login.html')) {
                 this.initAuthPage();
-            } else if (path.endsWith('about.html') || path.endsWith('contact.html')) {
+            } else if ((path.endsWith('about.php') || path.endsWith('about.php')) || (path.endsWith('contact.php') || path.endsWith('contact.php'))) {
                 // Info pages: general bindings
             } else {
                 this.initHomePage();
@@ -258,7 +258,7 @@
             return `
                 <div class="product-card" data-product-id="${product.id}">
                     <div class="card-media">
-                        <a href="product-detail.html?id=${product.id}" style="display:block; width:100%; height:100%;">
+                        <a href="product-detail.php?id=${product.id}" style="display:block; width:100%; height:100%;">
                             <img src="${product.image}" alt="${product.name}" 
                                  onerror="this.onerror=null; this.src='${product.fallbackImage || ''}'" loading="lazy">
                         </a>
@@ -288,7 +288,7 @@
                     <div class="card-content">
                         <span class="card-category">${product.category || 'Thời trang'}</span>
                         <h4 class="card-title" title="${product.name}">
-                            <a href="product-detail.html?id=${product.id}" style="color:inherit; text-decoration:none;">
+                            <a href="product-detail.php?id=${product.id}" style="color:inherit; text-decoration:none;">
                                 ${product.name}
                             </a>
                         </h4>
@@ -337,7 +337,7 @@
             container.innerHTML = categoryMap.map(cat => {
                 const count = products.filter(p => p.category === cat.name).length;
                 return `
-                    <a href="products.html?category=${encodeURIComponent(cat.name)}" class="category-card">
+                    <a href="products.php?category=${encodeURIComponent(cat.name)}" class="category-card">
                         <div class="category-icon-box">
                             ${window.ICONS ? window.ICONS[cat.icon] || window.ICONS.products : '👕'}
                         </div>
@@ -355,7 +355,7 @@
             const collections = this.state.collections || [];
             container.innerHTML = collections.slice(0, 4).map(col => {
                 return `
-                    <a href="products.html?collection=${encodeURIComponent(col.name)}" 
+                    <a href="products.php?collection=${encodeURIComponent(col.name)}" 
                        class="collection-card" 
                        style="background-image: url('${col.banner}')">
                         <div class="collection-card-inner">
@@ -1585,7 +1585,7 @@
                     <p style="color:var(--text-secondary); margin:0 0 28px; font-size:0.95rem; max-width:440px; margin-inline:auto;">
                         Bạn chưa chọn sản phẩm nào vào giỏ hàng. Hãy khám phá bộ sưu tập streetwear mới nhất của VAST STUDIO để chọn những món đồ ưng ý nhé!
                     </p>
-                    <a href="products.html" class="btn-hero-primary" style="display:inline-flex; align-items:center; gap:8px; padding:14px 28px; text-decoration:none;">
+                    <a href="products.php" class="btn-hero-primary" style="display:inline-flex; align-items:center; gap:8px; padding:14px 28px; text-decoration:none;">
                         <span>Khám Phá Sản Phẩm Ngay</span>
                         <span data-icon="arrowRight"></span>
                     </a>
@@ -2054,16 +2054,16 @@
 
                     <!-- ACTION BUTTONS -->
                     <div class="success-action-btns">
-                        <a href="order-tracking.html?order=${order.id}" class="btn-hero-primary" style="text-decoration:none; padding:14px 24px;">
+                        <a href="order-tracking.php?order=${order.id}" class="btn-hero-primary" style="text-decoration:none; padding:14px 24px;">
                             <span data-icon="truck"></span> Tra Cứu Tiến Độ Đơn
                         </a>
                         <button type="button" class="btn-hero-outline" onclick="window.print()" style="padding:14px 20px;">
                             <span data-icon="printer"></span> In Hóa Đơn
                         </button>
-                        <a href="products.html" class="btn-hero-outline" style="text-decoration:none; padding:14px 24px;">
+                        <a href="products.php" class="btn-hero-outline" style="text-decoration:none; padding:14px 24px;">
                             Tiếp Tục Mua Sắm
                         </a>
-                        <a href="admin.html" class="btn-hero-outline" target="_blank" style="text-decoration:none; padding:14px 18px; font-size:0.85rem;" title="Xem đơn trên trang Admin">
+                        <a href="admin.php" class="btn-hero-outline" target="_blank" style="text-decoration:none; padding:14px 18px; font-size:0.85rem;" title="Xem đơn trên trang Admin">
                             <span data-icon="dashboard"></span> Quản Trị
                         </a>
                     </div>
@@ -2266,7 +2266,7 @@
                                     <div class="auth-input-group" style="margin-bottom:24px;">
                                         <label style="display:flex; align-items:flex-start; gap:8px; font-size:0.8rem; color:var(--text-secondary); cursor:pointer;">
                                             <input type="checkbox" id="reg-terms" style="margin-top:2px; accent-color:var(--store-gold); cursor:pointer;" required>
-                                            <span>Tôi đồng ý với <a href="about.html" target="_blank" style="color:var(--store-gold); font-weight:600;">Điều khoản thành viên</a> & <a href="about.html" target="_blank" style="color:var(--store-gold); font-weight:600;">Chính sách bảo mật</a> của VAST STUDIO.</span>
+                                            <span>Tôi đồng ý với <a href="about.php" target="_blank" style="color:var(--store-gold); font-weight:600;">Điều khoản thành viên</a> & <a href="about.php" target="_blank" style="color:var(--store-gold); font-weight:600;">Chính sách bảo mật</a> của VAST STUDIO.</span>
                                         </label>
                                     </div>
 
@@ -2497,7 +2497,7 @@
                         <div class="profile-card-base profile-section-card">
                             <div class="profile-section-title">
                                 <span>Đơn Hàng Gần Đây Của Bạn (${userOrders.length})</span>
-                                <a href="order-tracking.html" style="font-size:0.8rem; color:var(--store-gold); text-decoration:none; font-weight:600;">
+                                <a href="order-tracking.php" style="font-size:0.8rem; color:var(--store-gold); text-decoration:none; font-weight:600;">
                                     Tra cứu chi tiết →
                                 </a>
                             </div>
@@ -2507,7 +2507,7 @@
                                     <div style="font-size:2.5rem; margin-bottom:8px;">📦</div>
                                     <h4 style="margin:0 0 6px; color:var(--text-primary); font-family:var(--store-font-heading);">Chưa có đơn hàng nào</h4>
                                     <p style="font-size:0.85rem; margin:0 0 16px;">Khám phá bộ sưu tập streetwear mới nhất và đặt hàng ngay.</p>
-                                    <a href="products.html" class="btn-hero-primary" style="display:inline-block; padding:10px 22px; font-size:0.85rem; text-decoration:none;">
+                                    <a href="products.php" class="btn-hero-primary" style="display:inline-block; padding:10px 22px; font-size:0.85rem; text-decoration:none;">
                                         Mua sắm ngay
                                     </a>
                                 </div>
@@ -2541,7 +2541,7 @@
                                                             ${this.formatMoney(order.total)}
                                                         </strong>
                                                     </div>
-                                                    <a href="order-tracking.html?order=${order.id}" class="btn-card-addcart" style="text-decoration:none; padding:6px 14px; font-size:0.8rem;">
+                                                    <a href="order-tracking.php?order=${order.id}" class="btn-card-addcart" style="text-decoration:none; padding:6px 14px; font-size:0.8rem;">
                                                         Theo dõi đơn
                                                     </a>
                                                 </div>
@@ -2687,7 +2687,7 @@
                         <div style="font-size:3rem; margin-bottom:12px;">🤍</div>
                         <h4 style="margin:0 0 6px; color:var(--text-primary); font-family:var(--store-font-heading);">Danh sách yêu thích trống</h4>
                         <p style="font-size:0.85rem; margin:0 0 16px;">Nhấn biểu tượng trái tim để lưu các thiết kế bạn quan tâm.</p>
-                        <a href="products.html" class="btn-hero-primary" style="padding:10px 18px; font-size:0.82rem; text-decoration:none;" onclick="Storefront.closeWishlist()">
+                        <a href="products.php" class="btn-hero-primary" style="padding:10px 18px; font-size:0.82rem; text-decoration:none;" onclick="Storefront.closeWishlist()">
                             Khám phá sản phẩm
                         </a>
                     </div>
@@ -2695,12 +2695,12 @@
             } else {
                 container.innerHTML = wishlistProducts.map(item => `
                     <div class="wishlist-item">
-                        <a href="product-detail.html?id=${item.id}">
+                        <a href="product-detail.php?id=${item.id}">
                             <img src="${item.image}" alt="${item.name}" style="width:68px; height:84px; object-fit:cover; border-radius:var(--radius-sm);"
                                  onerror="this.onerror=null; this.src='${item.fallbackImage || ''}'">
                         </a>
                         <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
-                            <a href="product-detail.html?id=${item.id}" style="text-decoration:none; color:var(--text-primary); font-size:0.88rem; font-weight:700; line-height:1.3;">
+                            <a href="product-detail.php?id=${item.id}" style="text-decoration:none; color:var(--text-primary); font-size:0.88rem; font-weight:700; line-height:1.3;">
                                 ${item.name}
                             </a>
                             <span style="font-family:var(--store-font-heading); font-size:0.95rem; font-weight:800;">${this.formatMoney(item.price)}</span>
@@ -2778,7 +2778,7 @@
                             <div style="font-size:3rem; margin-bottom:12px;">🛍️</div>
                             <h4 style="margin:0 0 6px; color:var(--text-primary); font-family:var(--store-font-heading);">Giỏ hàng trống</h4>
                             <p style="font-size:0.85rem; margin:0 0 16px;">Hãy khám phá các thiết kế mới nhất của VAST STUDIO.</p>
-                            <a href="products.html" class="btn-hero-primary" style="padding:10px 18px; font-size:0.82rem; text-decoration:none;" onclick="Storefront.closeCart()">
+                            <a href="products.php" class="btn-hero-primary" style="padding:10px 18px; font-size:0.82rem; text-decoration:none;" onclick="Storefront.closeCart()">
                                 Mua sắm ngay
                             </a>
                         </div>
@@ -2884,7 +2884,7 @@
             }
 
             this.closeCart();
-            window.location.href = 'checkout.html';
+            window.location.href = 'checkout.php';
         },
 
         closeCheckoutModal() {
@@ -2988,13 +2988,13 @@
                         ` : ''}
 
                         <div style="display:flex; gap:12px; margin-top:10px; flex-wrap:wrap;">
-                            <a href="order-tracking.html?order=${newOrder.id}" class="btn-hero-primary" style="padding:12px 20px; font-size:0.88rem; text-decoration:none;">
+                            <a href="order-tracking.php?order=${newOrder.id}" class="btn-hero-primary" style="padding:12px 20px; font-size:0.88rem; text-decoration:none;">
                                 Tra cứu đơn này →
                             </a>
-                            <a href="products.html" class="btn-hero-outline" style="padding:12px 20px; font-size:0.88rem; text-decoration:none;">
+                            <a href="products.php" class="btn-hero-outline" style="padding:12px 20px; font-size:0.88rem; text-decoration:none;">
                                 Tiếp tục mua sắm
                             </a>
-                            <a href="admin.html" class="btn-hero-outline" style="padding:12px 16px; font-size:0.82rem; text-decoration:none;" target="_blank">
+                            <a href="admin.php" class="btn-hero-outline" style="padding:12px 16px; font-size:0.82rem; text-decoration:none;" target="_blank">
                                 Quản trị xem đơn
                             </a>
                         </div>
@@ -3090,7 +3090,7 @@
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--border-color); padding-top:10px; margin-top:4px;">
-                        <a href="product-detail.html?id=${product.id}" style="color:var(--text-primary); font-size:0.85rem; font-weight:700; text-decoration:underline;">
+                        <a href="product-detail.php?id=${product.id}" style="color:var(--text-primary); font-size:0.85rem; font-weight:700; text-decoration:underline;">
                             Xem trang chi tiết sản phẩm đầy đủ →
                         </a>
                         <span style="font-size:0.78rem; color:var(--text-muted);">Đổi trả 30 ngày</span>
@@ -3239,7 +3239,7 @@
                 `;
             } else {
                 container.innerHTML = matches.map(p => `
-                    <a href="product-detail.html?id=${p.id}" style="display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:var(--radius-sm); text-decoration:none; transition:var(--transition); background:var(--bg-app); margin-bottom:6px;">
+                    <a href="product-detail.php?id=${p.id}" style="display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:var(--radius-sm); text-decoration:none; transition:var(--transition); background:var(--bg-app); margin-bottom:6px;">
                         <img src="${p.image}" alt="${p.name}" style="width:48px; height:48px; border-radius:4px; object-fit:cover;">
                         <div style="flex:1;">
                             <h5 style="margin:0; font-size:0.9rem; color:var(--text-primary);">${p.name}</h5>
@@ -3296,3 +3296,4 @@
     });
 
 })(window);
+

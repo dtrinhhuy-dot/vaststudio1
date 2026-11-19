@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +6,7 @@
     <title>Chuyển hướng đến Danh Sách Sản Phẩm VAST STUDIO</title>
 </head>
 <body>
-    <script>window.location.replace('products.html');</script>
+    <script>window.location.replace('products.php');</script>
 </body>
 </html>
+

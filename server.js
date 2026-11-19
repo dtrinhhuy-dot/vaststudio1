@@ -16,6 +16,7 @@ const PUBLIC_DIR = __dirname;
 
 const MIME_TYPES = {
     '.html': 'text/html; charset=UTF-8',
+    '.php': 'text/html; charset=UTF-8',
     '.css': 'text/css; charset=UTF-8',
     '.js': 'application/javascript; charset=UTF-8',
     '.json': 'application/json; charset=UTF-8',
@@ -71,7 +72,7 @@ function startServer(port) {
         let pathname = decodeURIComponent(parsedUrl.pathname || '/');
 
         if (pathname === '/' || pathname === '') {
-            pathname = '/index.html';
+            pathname = fs.existsSync(path.join(PUBLIC_DIR, 'index.php')) ? '/index.php' : '/index.html';
         }
 
         const safePath = path.normalize(path.join(PUBLIC_DIR, pathname));
@@ -88,12 +89,16 @@ function startServer(port) {
 
         fs.stat(safePath, (err, stats) => {
             if (err || !stats.isFile()) {
-                // If requesting html without extension (clean url, e.g. /checkout -> /checkout.html)
+                // If requesting without extension (clean url, e.g. /checkout -> /checkout.php or /checkout.html)
+                const cleanPhpPath = safePath + '.php';
                 const cleanHtmlPath = safePath + '.html';
-                if (fs.existsSync(cleanHtmlPath)) {
+                if (fs.existsSync(cleanPhpPath)) {
+                    serveFile(res, cleanPhpPath, 'text/html; charset=UTF-8');
+                } else if (fs.existsSync(cleanHtmlPath)) {
                     serveFile(res, cleanHtmlPath, 'text/html; charset=UTF-8');
                 } else if (!extname) {
-                    serveFile(res, path.join(PUBLIC_DIR, 'index.html'), 'text/html; charset=UTF-8');
+                    const defaultIndex = fs.existsSync(path.join(PUBLIC_DIR, 'index.php')) ? 'index.php' : 'index.html';
+                    serveFile(res, path.join(PUBLIC_DIR, defaultIndex), 'text/html; charset=UTF-8');
                 } else {
                     res.writeHead(404, { 'Content-Type': 'text/html; charset=UTF-8' });
                     res.end('<h1>404 Not Found — VAST STUDIO</h1>', 'utf-8');
