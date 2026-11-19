@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Về Chúng Tôi — VAST STUDIO | Câu Chuyện Thương Hiệu & Triết Lý Thiết Kế</title>
+    <meta name="description" content="Tìm hiểu về thương hiệu thời trang đường phố VAST STUDIO: Triết lý thiết kế tối giản đương đại, kỹ nghệ chất liệu 100% cotton tự nhiên và phom dáng chuẩn Á Đông.">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/storefront.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23000'/><text x='50' y='68' font-size='60' font-family='sans-serif' font-weight='900' fill='%23fff' text-anchor='middle'>V</text></svg>">
+</head>
+<body class="store-body">
+
+    <!-- 1. ANNOUNCEMENT TOPBAR -->
+    <div class="announcement-bar">
+        <div class="store-container">
+            <div class="announcement-inner">
+                <div class="announcement-text">
+                    <span>🔥 Miễn phí vận chuyển cho đơn từ 500K</span>
+                    <span>|</span>
+                    <span>Nhập mã <span class="announcement-code" onclick="Storefront.copyCoupon('VASTWELCOME')" title="Nhấp để sao chép mã">VASTWELCOME</span> giảm ngay 100K</span>
+                </div>
+                <div class="announcement-links">
+                    <a href="order-tracking.html" class="announcement-link">
+                        <span data-icon="truck"></span> Tra cứu đơn hàng
+                    </a>
+                    <span class="announcement-link">
+                        <span data-icon="phone"></span> Hotline: 0988.123.456
+                    </span>
+                    <a href="admin.html" class="admin-access-badge" title="Chuyển đến Trang Quản Trị Cửa Hàng">
+                        <span data-icon="dashboard"></span> Trang Quản Trị
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MAIN NAVIGATION HEADER -->
+    <header class="store-header">
+        <div class="store-container">
+            <div class="store-header-inner">
+                <a href="index.html" class="store-brand">
+                    <div class="brand-monogram">V</div>
+                    <div class="brand-text-block">
+                        <span class="brand-main-title">VAST STUDIO</span>
+                        <span class="brand-sub-title">Streetwear Core</span>
+                    </div>
+                </a>
+
+                <nav>
+                    <ul class="store-nav-menu">
+                        <li><a href="index.html" class="nav-link">Trang chủ</a></li>
+                        <li><a href="products.html" class="nav-link">Sản phẩm <span class="nav-badge-hot">Hot</span></a></li>
+                        <li><a href="about.html" class="nav-link active">Giới thiệu</a></li>
+                        <li><a href="order-tracking.html" class="nav-link">Tra cứu đơn</a></li>
+                        <li><a href="contact.html" class="nav-link">Liên hệ & Store</a></li>
+                    </ul>
+                </nav>
+
+                <div class="store-header-actions">
+                    <button class="action-icon-btn" title="Tìm kiếm sản phẩm" onclick="Storefront.openSearchModal()">
+                        <span data-icon="search"></span>
+                    </button>
+
+                    <button class="action-icon-btn" id="theme-toggle-btn" title="Đổi giao diện Sáng / Tối" onclick="Storefront.toggleTheme()">
+                        <span id="theme-toggle-icon" data-icon="sun"></span>
+                    </button>
+
+                    <button class="action-icon-btn" title="Danh sách yêu thích" onclick="Storefront.openWishlist()">
+                        <span data-icon="heart"></span>
+                        <span class="action-badge" id="header-wishlist-badge" style="display: none;">0</span>
+                    </button>
+
+                    <button class="btn-header-cart" onclick="Storefront.openCart()">
+                        <span data-icon="shoppingBag"></span>
+                        <span>Giỏ hàng</span>
+                        <span class="action-badge" id="header-cart-badge" style="display: none;">0</span>
+                    </button>
+
+                    <a href="admin.html" class="action-icon-btn" title="Quản trị Shop" style="margin-left: 4px;">
+                        <span data-icon="settings"></span>
+                    </a>
+
+                    <button class="mobile-nav-toggle" onclick="Storefront.openCart()">
+                        <span data-icon="menu"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 3. ABOUT CONTENT -->
+    <main>
+        <!-- Hero Section -->
+        <section class="about-hero-section">
+            <div class="store-container">
+                <span class="section-label">Câu Chuyện Thương Hiệu</span>
+                <h1 style="font-family: var(--store-font-heading); font-size: clamp(2.2rem, 4vw, 3.5rem); font-weight: 800; margin: 12px 0 16px; text-transform: uppercase;">
+                    REDEFINING MODERN STREETWEAR
+                </h1>
+                <p style="color: var(--text-secondary); max-width: 680px; margin: 0 auto; font-size: 1.1rem; line-height: 1.6;">
+                    <strong>VAST STUDIO</strong> sinh ra từ tình yêu mãnh liệt với thời trang đường phố tối giản và khát vọng mang đến những thiết kế chỉn chu, bền bỉ và tôn vinh phom dáng người Việt.
+                </p>
+            </div>
+        </section>
+
+        <!-- Story Section -->
+        <div class="store-container">
+            <div class="about-story-grid">
+                <div>
+                    <span class="section-label">Khởi nguồn sáng tạo</span>
+                    <h2 style="font-family: var(--store-font-heading); font-size: 2rem; margin: 8px 0 16px;">
+                        TỐI GIẢN KHÔNG ĐỒNG NGHĨA VỚI ĐƠN ĐIỆU
+                    </h2>
+                    <p style="color: var(--text-secondary); line-height: 1.7; font-size: 0.95rem;">
+                        Trong thế giới thời trang vận động không ngừng, VAST STUDIO chọn con đường tập trung vào <strong>bản chất của trang phục</strong>: Chất lượng sợi dệt, độ chính xác của đường may, và phom dáng đứng phom tự nhiên.
+                    </p>
+                    <p style="color: var(--text-secondary); line-height: 1.7; font-size: 0.95rem;">
+                        Chúng tôi tin rằng một chiếc áo thun Boxy hoàn hảo không cần quá nhiều họa tiết rối mắt — vẻ đẹp nằm ở độ rũ tự nhiên của chất vải cotton 280GSM, đường trần đè vai đúp đôi kim tỉ mỉ và mác kim loại mạ bạc đính tinh tế sau gáy.
+                    </p>
+                    <div style="margin-top: 24px;">
+                        <a href="products.html" class="btn-hero-primary">
+                            Khám Phá Các Thiết Kế <span data-icon="arrowRight"></span>
+                        </a>
+                    </div>
+                </div>
+
+                <div style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-color); aspect-ratio: 4 / 5;">
+                    <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80" alt="VAST STUDIO Editorial" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+            </div>
+        </div>
+
+        <!-- 4 Core Pillars -->
+        <section class="store-section" style="background: var(--bg-surface); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+            <div class="store-container">
+                <div class="section-header-row" style="text-align: center; justify-content: center;">
+                    <div class="section-title-wrap" style="align-items: center;">
+                        <span class="section-label">Tiêu Chuẩn Cốt Lõi</span>
+                        <h2 class="section-heading">4 TRỤ CỘT CỦA VAST STUDIO</h2>
+                        <p class="section-subheading">Những nguyên tắc bất biến định hình nên từng sản phẩm đến tay khách hàng.</p>
+                    </div>
+                </div>
+
+                <div class="about-values-grid">
+                    <div class="about-value-card">
+                        <div class="usp-icon-wrap" style="width: 48px; height: 48px;"><span data-icon="package"></span></div>
+                        <h3 style="font-family: var(--store-font-heading); margin: 0; font-size: 1.15rem;">1. Phom Dáng Chuẩn Á Đông</h3>
+                        <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem; line-height: 1.6;">
+                            Nghiên cứu kỹ lưỡng độ rộng vai, hạ nách và chiều dài thân áo để mang lại phom dáng Boxy đứng dáng, che khuyết điểm cơ thể tối ưu.
+                        </p>
+                    </div>
+
+                    <div class="about-value-card">
+                        <div class="usp-icon-wrap" style="width: 48px; height: 48px;"><span data-icon="shieldCheck"></span></div>
+                        <h3 style="font-family: var(--store-font-heading); margin: 0; font-size: 1.15rem;">2. Kỹ Nghệ Sợi Vải Cao Cấp</h3>
+                        <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem; line-height: 1.6;">
+                            100% sợi bông tự nhiên định lượng cao (Heavyweight 280-400GSM), qua xử lý chống co rút và chống xù lông, cho cảm giác mặc mát mẻ, đầm tay.
+                        </p>
+                    </div>
+
+                    <div class="about-value-card">
+                        <div class="usp-icon-wrap" style="width: 48px; height: 48px;"><span data-icon="rotateCcw"></span></div>
+                        <h3 style="font-family: var(--store-font-heading); margin: 0; font-size: 1.15rem;">3. Bền Vững Với Thời Gian</h3>
+                        <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem; line-height: 1.6;">
+                            Chúng tôi tạo ra những món đồ vượt thời gian (Timeless Aesthetics), mặc đẹp từ mùa này qua mùa khác mà không sợ lỗi mốt.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Milestones Timeline -->
+        <section class="store-section">
+            <div class="store-container" style="max-width: 800px;">
+                <div class="section-title-wrap" style="text-align: center; margin-bottom: 40px; align-items: center;">
+                    <span class="section-label">Hành Trình Phát Triển</span>
+                    <h2 class="section-heading">CỘT MỐC VAST STUDIO</h2>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; display: flex; gap: 20px; align-items: flex-start;">
+                        <span style="font-family: var(--store-font-heading); font-size: 1.6rem; font-weight: 800; color: var(--store-gold);">2024</span>
+                        <div>
+                            <h4 style="margin: 0 0 4px; font-size: 1.05rem;">Khởi Đầu Tại Hà Nội</h4>
+                            <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                                Giới thiệu mẫu Áo Thun VAST Heavyweight Boxy Tee đầu tiên với 500 chiếc cháy hàng trong vòng 48 giờ mở bán.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; display: flex; gap: 20px; align-items: flex-start;">
+                        <span style="font-family: var(--store-font-heading); font-size: 1.6rem; font-weight: 800; color: var(--store-gold);">2025</span>
+                        <div>
+                            <h4 style="margin: 0 0 4px; font-size: 1.05rem;">Mở Rộng Flagship Store TP.HCM</h4>
+                            <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                                Khai trương không gian mua sắm tối giản tại 72 Lê Thánh Tôn, Quận 1 và đạt mốc phục vụ hơn 5.000 tín đồ thời trang cả nước.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; display: flex; gap: 20px; align-items: flex-start;">
+                        <span style="font-family: var(--store-font-heading); font-size: 1.6rem; font-weight: 800; color: var(--store-gold);">2026</span>
+                        <div>
+                            <h4 style="margin: 0 0 4px; font-size: 1.05rem;">Ra Mắt Monochrome & Winter Outerwear Drop</h4>
+                            <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                                Đưa dòng Bomber Jacket da dạ và Wide-leg Raw Denim vào bộ sưu tập chủ đạo, hoàn thiện hệ sinh thái trang phục cao cấp VAST STUDIO.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 4. FOOTER -->
+    <footer class="store-footer">
+        <div class="store-container">
+            <div class="footer-grid">
+                <div class="footer-col-brand">
+                    <div class="footer-brand-title">VAST STUDIO</div>
+                    <p class="footer-desc">
+                        Thương hiệu thời trang đường phố đương đại & phong cách tối giản. Định hình gu ăn mặc tự tin, chỉn chu và phong cách cho giới trẻ Việt Nam.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="footer-col-title">Khám Phá</h4>
+                    <ul class="footer-links">
+                        <li><a href="products.html" class="footer-link">Tất cả sản phẩm</a></li>
+                        <li><a href="about.html" class="footer-link">Câu chuyện thương hiệu</a></li>
+                        <li><a href="order-tracking.html" class="footer-link">Tra cứu đơn hàng</a></li>
+                        <li><a href="contact.html" class="footer-link">Hệ thống Showroom</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="footer-col-title">Hệ Thống Store</h4>
+                    <ul class="footer-links">
+                        <li><span>148 Phố Huế, Q. Hai Bà Trưng, Hà Nội</span></li>
+                        <li><span>72 Lê Thánh Tôn, Quận 1, TP.HCM</span></li>
+                        <li><span>Hotline: 0988.123.456</span></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="footer-col-title">Quản Trị</h4>
+                    <a href="admin.html" class="footer-admin-btn">
+                        <span data-icon="dashboard"></span> Đến Trang Quản Trị
+                    </a>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <div>© 2026 <strong>VAST STUDIO</strong>. Tất cả quyền được bảo lưu.</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODALS & DRAWERS -->
+    <div class="cart-drawer-overlay" id="cart-drawer-overlay" onclick="Storefront.closeCart()"></div>
+    <aside class="cart-drawer" id="cart-drawer">
+        <div class="cart-header">
+            <h3 class="cart-title"><span data-icon="shoppingBag"></span> Giỏ Hàng Của Bạn</h3>
+            <button class="cart-close-btn" onclick="Storefront.closeCart()"><span data-icon="x"></span></button>
+        </div>
+        <div class="cart-shipping-meter">
+            <div id="shipping-meter-text">Mua thêm để được FREESHIP</div>
+            <div class="meter-bar-track"><div class="meter-bar-fill" id="shipping-meter-fill"></div></div>
+        </div>
+        <div class="cart-items-container" id="cart-items-container"></div>
+        <div class="cart-footer">
+            <div class="cart-totals-list">
+                <div class="cart-total-row"><span>Tạm tính:</span><span id="cart-summary-subtotal">0 ₫</span></div>
+                <div class="cart-total-row grand-total"><span>Tổng:</span><span id="cart-summary-total">0 ₫</span></div>
+            </div>
+            <button class="btn-checkout-now" id="btn-cart-checkout" onclick="Storefront.openCheckoutModal()">
+                Tiến Hành Đặt Hàng <span data-icon="arrowRight"></span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="cart-drawer-overlay" id="wishlist-drawer-overlay" onclick="Storefront.closeWishlist()"></div>
+    <aside class="wishlist-drawer" id="wishlist-drawer">
+        <div class="cart-header">
+            <h3 class="cart-title"><span data-icon="heart"></span> Danh Sách Yêu Thích</h3>
+            <button class="cart-close-btn" onclick="Storefront.closeWishlist()"><span data-icon="x"></span></button>
+        </div>
+        <div class="wishlist-items-container" id="wishlist-items-container"></div>
+    </aside>
+
+    <div class="checkout-modal-overlay" id="checkout-modal-overlay" onclick="if(event.target === this) Storefront.closeCheckoutModal()">
+        <div class="checkout-dialog" id="checkout-modal-content"></div>
+    </div>
+
+    <div class="quickview-modal-overlay" id="quickview-modal-overlay" onclick="if(event.target === this) Storefront.closeQuickView()">
+        <div class="quickview-dialog" id="quickview-dialog"></div>
+    </div>
+
+    <div class="search-modal-overlay" id="search-modal-overlay" onclick="if(event.target === this) Storefront.closeSearchModal()">
+        <div class="search-dialog">
+            <div class="search-input-box">
+                <span class="search-input-icon" data-icon="search"></span>
+                <input type="text" class="search-modal-input" id="search-modal-input" placeholder="Tìm kiếm nhanh..." oninput="Storefront.handleLiveSearch(this.value)">
+                <button class="cart-close-btn" style="position: absolute; right: 18px; top: 50%; transform: translateY(-50%);" onclick="Storefront.closeSearchModal()"><span data-icon="x"></span></button>
+            </div>
+            <div class="search-results-box" id="search-results-list"></div>
+        </div>
+    </div>
+
+    <!-- FLOATING SUPPORT & BACK TO TOP -->
+    <div class="floating-support-bar">
+        <div class="float-tooltip">
+            <span>👋 Cần tư vấn phối đồ?</span>
+        </div>
+        <a href="tel:0988123456" class="float-btn float-btn-hotline" title="Hotline 0988.123.456">
+            <span data-icon="phone"></span>
+        </a>
+        <a href="https://zalo.me" target="_blank" class="float-btn float-btn-zalo" title="Chat Zalo">
+            Zalo
+        </a>
+        <button class="float-btn btn-back-to-top" id="btn-back-to-top" onclick="Storefront.scrollToTop()" title="Lên đầu trang">
+            ↑
+        </button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/icons.js"></script>
+    <script src="js/models/StoreModel.js"></script>
+    <script src="js/storefront.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('[data-icon]').forEach(el => {
+                const iconName = el.getAttribute('data-icon');
+                if (window.ICONS && window.ICONS[iconName]) {
+                    el.innerHTML = window.ICONS[iconName];
+                }
+            });
+        });
+    </script>
+</body>
+</html>
