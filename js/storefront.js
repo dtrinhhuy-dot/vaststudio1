@@ -53,6 +53,8 @@
                 this.initProductDetailPage();
             } else if (path.endsWith('order-tracking.html')) {
                 this.initOrderTrackingPage();
+            } else if (path.endsWith('checkout.html')) {
+                this.initCheckoutPage();
             } else if (path.endsWith('about.html') || path.endsWith('contact.html')) {
                 // Info pages: general bindings
             } else {
@@ -1209,6 +1211,850 @@
         },
 
         // ======================================================================
+        // TRANG THANH TOÁN (CHECKOUT PAGE LOGIC)
+        // ======================================================================
+        initCheckoutPage() {
+            const container = document.getElementById('checkout-main-content');
+            if (!container) return;
+            if (!window.StoreModel) return;
+
+            // Default checkout state
+            if (!this.state.checkoutShipping) this.state.checkoutShipping = 'standard';
+            if (!this.state.checkoutPayment) this.state.checkoutPayment = 'QR';
+
+            const cart = window.StoreModel.getCart();
+
+            // 1. If cart is empty
+            if (!cart || cart.length === 0) {
+                this.renderCheckoutEmpty(container);
+                return;
+            }
+
+            // 2. Load saved customer info if available
+            let savedCustomer = {};
+            try {
+                savedCustomer = JSON.parse(localStorage.getItem('vast_customer_info') || '{}');
+            } catch (err) {}
+
+            // 3. Render 2-column checkout layout
+            container.innerHTML = `
+                <form id="checkout-main-form" class="checkout-main-grid" onsubmit="Storefront.submitCheckoutPage(event)">
+                    <!-- LEFT COLUMN: SHIPPING & PAYMENT -->
+                    <div class="checkout-left-col">
+                        <!-- SECTION 1: CUSTOMER INFO -->
+                        <div class="checkout-section-card">
+                            <div class="checkout-section-header">
+                                <h2 class="checkout-section-title">
+                                    <span class="checkout-section-title-num">1</span>
+                                    Thông Tin Giao Hàng
+                                </h2>
+                                <span class="checkout-section-badge">Giao Tận Nơi</span>
+                            </div>
+
+                            <div class="checkout-form-grid">
+                                <div class="form-group-full">
+                                    <label class="checkout-label">Họ và tên người nhận <span class="required">*</span></label>
+                                    <input type="text" id="checkout-fullname" class="checkout-input" 
+                                           placeholder="Ví dụ: Nguyễn Văn A" 
+                                           value="${savedCustomer.name || ''}" required>
+                                </div>
+
+                                <div>
+                                    <label class="checkout-label">Số điện thoại <span class="required">*</span></label>
+                                    <input type="tel" id="checkout-phone" class="checkout-input" 
+                                           placeholder="Ví dụ: 0912 345 678" 
+                                           value="${savedCustomer.phone || ''}" required>
+                                </div>
+
+                                <div>
+                                    <label class="checkout-label">Email (nhận hóa đơn & tra cứu)</label>
+                                    <input type="email" id="checkout-email" class="checkout-input" 
+                                           placeholder="email@example.com" 
+                                           value="${savedCustomer.email || ''}">
+                                </div>
+
+                                <div class="form-group-3col">
+                                    <div>
+                                        <label class="checkout-label">Tỉnh / Thành phố <span class="required">*</span></label>
+                                        <select id="checkout-city" class="checkout-select" required onchange="Storefront.handleCityChange(this.value)">
+                                            <option value="">-- Chọn Tỉnh/TP --</option>
+                                            <option value="Hà Nội" ${savedCustomer.city === 'Hà Nội' ? 'selected' : ''}>Hà Nội</option>
+                                            <option value="TP. Hồ Chí Minh" ${savedCustomer.city === 'TP. Hồ Chí Minh' ? 'selected' : ''}>TP. Hồ Chí Minh</option>
+                                            <option value="Đà Nẵng" ${savedCustomer.city === 'Đà Nẵng' ? 'selected' : ''}>Đà Nẵng</option>
+                                            <option value="Hải Phòng" ${savedCustomer.city === 'Hải Phòng' ? 'selected' : ''}>Hải Phòng</option>
+                                            <option value="Cần Thơ" ${savedCustomer.city === 'Cần Thơ' ? 'selected' : ''}>Cần Thơ</option>
+                                            <option value="Bình Dương" ${savedCustomer.city === 'Bình Dương' ? 'selected' : ''}>Bình Dương</option>
+                                            <option value="Đồng Nai" ${savedCustomer.city === 'Đồng Nai' ? 'selected' : ''}>Đồng Nai</option>
+                                            <option value="Quảng Ninh" ${savedCustomer.city === 'Quảng Ninh' ? 'selected' : ''}>Quảng Ninh</option>
+                                            <option value="Bắc Ninh" ${savedCustomer.city === 'Bắc Ninh' ? 'selected' : ''}>Bắc Ninh</option>
+                                            <option value="Khánh Hòa" ${savedCustomer.city === 'Khánh Hòa' ? 'selected' : ''}>Khánh Hòa</option>
+                                            <option value="Lâm Đồng" ${savedCustomer.city === 'Lâm Đồng' ? 'selected' : ''}>Lâm Đồng</option>
+                                            <option value="Thừa Thiên Huế" ${savedCustomer.city === 'Thừa Thiên Huế' ? 'selected' : ''}>Thừa Thiên Huế</option>
+                                            <option value="Nghệ An" ${savedCustomer.city === 'Nghệ An' ? 'selected' : ''}>Nghệ An</option>
+                                            <option value="Thanh Hóa" ${savedCustomer.city === 'Thanh Hóa' ? 'selected' : ''}>Thanh Hóa</option>
+                                            <option value="Khác">Tỉnh thành khác</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="checkout-label">Quận / Huyện <span class="required">*</span></label>
+                                        <input type="text" id="checkout-district" class="checkout-input" 
+                                               placeholder="Quận / Huyện" 
+                                               value="${savedCustomer.district || ''}" required>
+                                    </div>
+                                    <div>
+                                        <label class="checkout-label">Phường / Xã <span class="required">*</span></label>
+                                        <input type="text" id="checkout-ward" class="checkout-input" 
+                                               placeholder="Phường / Xã" 
+                                               value="${savedCustomer.ward || ''}" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group-full">
+                                    <label class="checkout-label">Địa chỉ cụ thể (Số nhà, tên ngõ/đường, tòa nhà) <span class="required">*</span></label>
+                                    <input type="text" id="checkout-address-detail" class="checkout-input" 
+                                           placeholder="Số nhà, tên ngõ, tên đường..." 
+                                           value="${savedCustomer.addressDetail || ''}" required>
+                                </div>
+
+                                <div class="form-group-full">
+                                    <label class="checkout-label">Ghi chú giao hàng (tùy chọn)</label>
+                                    <textarea id="checkout-notes" class="checkout-textarea" 
+                                              placeholder="Ví dụ: Giao giờ hành chính, gọi trước 15 phút, gửi lễ tân...">${savedCustomer.note || ''}</textarea>
+                                </div>
+
+                                <div class="form-group-full" style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                                    <input type="checkbox" id="checkout-save-info" style="accent-color:var(--store-gold); width:16px; height:16px; cursor:pointer;" checked>
+                                    <label for="checkout-save-info" style="font-size:0.82rem; color:var(--text-secondary); cursor:pointer;">
+                                        Lưu thông tin giao hàng này cho lần mua sau
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 2: SHIPPING METHODS -->
+                        <div class="checkout-section-card">
+                            <div class="checkout-section-header">
+                                <h2 class="checkout-section-title">
+                                    <span class="checkout-section-title-num">2</span>
+                                    Phương Thức Vận Chuyển
+                                </h2>
+                                <span class="checkout-section-badge">Toàn Quốc</span>
+                            </div>
+
+                            <div class="method-choice-list" id="shipping-methods-container">
+                                <!-- Populated dynamically by updateCheckoutSummary -->
+                            </div>
+                        </div>
+
+                        <!-- SECTION 3: PAYMENT METHODS -->
+                        <div class="checkout-section-card">
+                            <div class="checkout-section-header">
+                                <h2 class="checkout-section-title">
+                                    <span class="checkout-section-title-num">3</span>
+                                    Phương Thức Thanh Toán
+                                </h2>
+                                <span class="checkout-section-badge">Bảo Mật SSL</span>
+                            </div>
+
+                            <div class="method-choice-list">
+                                <!-- VietQR -->
+                                <label class="method-choice-card ${this.state.checkoutPayment === 'QR' ? 'active' : ''}" 
+                                       onclick="Storefront.changeCheckoutPayment('QR')">
+                                    <input type="radio" name="checkoutPayment" value="QR" class="method-radio-input" 
+                                           ${this.state.checkoutPayment === 'QR' ? 'checked' : ''}>
+                                    <div class="method-choice-content">
+                                        <div class="method-choice-title">
+                                            <span>Chuyển khoản QR Ngân hàng (VietQR)</span>
+                                            <span class="method-badge-rec">Khuyên Dùng</span>
+                                        </div>
+                                        <p class="method-choice-desc">
+                                            Quét mã VietQR tự động qua app bất kỳ ngân hàng nào (Vietcombank, MB, Techcombank, ACB...). Hệ thống tự xác nhận đơn tức thì.
+                                        </p>
+                                        <div class="payment-details-panel">
+                                            <strong>Thông tin thụ hưởng chính thức VAST STUDIO:</strong><br>
+                                            • Ngân hàng: <strong>Vietcombank</strong> (Ngoại thương VN)<br>
+                                            • Số tài khoản: <strong style="font-family:monospace; color:var(--store-gold); font-size:0.95rem;">9988 7766 5500</strong><br>
+                                            • Chủ tài khoản: <strong>CONG TY TNHH VAST STUDIO VIETNAM</strong><br>
+                                            <em>(Mã QR chuyển tiền tự động kèm nội dung chính xác sẽ hiển thị ngay sau khi bấm Xác Nhận Đặt Hàng)</em>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <!-- COD -->
+                                <label class="method-choice-card ${this.state.checkoutPayment === 'COD' ? 'active' : ''}" 
+                                       onclick="Storefront.changeCheckoutPayment('COD')">
+                                    <input type="radio" name="checkoutPayment" value="COD" class="method-radio-input" 
+                                           ${this.state.checkoutPayment === 'COD' ? 'checked' : ''}>
+                                    <div class="method-choice-content">
+                                        <div class="method-choice-title">
+                                            <span>COD — Thanh toán khi nhận hàng</span>
+                                        </div>
+                                        <p class="method-choice-desc">
+                                            Thanh toán tiền mặt cho shipper khi nhận hàng. Quý khách được quyền đồng kiểm sản phẩm trước khi thanh toán.
+                                        </p>
+                                    </div>
+                                </label>
+
+                                <!-- MOMO -->
+                                <label class="method-choice-card ${this.state.checkoutPayment === 'MOMO' ? 'active' : ''}" 
+                                       onclick="Storefront.changeCheckoutPayment('MOMO')">
+                                    <input type="radio" name="checkoutPayment" value="MOMO" class="method-radio-input" 
+                                           ${this.state.checkoutPayment === 'MOMO' ? 'checked' : ''}>
+                                    <div class="method-choice-content">
+                                        <div class="method-choice-title">
+                                            <span>Ví điện tử MoMo</span>
+                                        </div>
+                                        <p class="method-choice-desc">
+                                            Quét mã MoMo QR hoặc thanh toán nhanh qua ứng dụng MoMo trên điện thoại.
+                                        </p>
+                                    </div>
+                                </label>
+
+                                <!-- CREDIT CARD -->
+                                <label class="method-choice-card ${this.state.checkoutPayment === 'CARD' ? 'active' : ''}" 
+                                       onclick="Storefront.changeCheckoutPayment('CARD')">
+                                    <input type="radio" name="checkoutPayment" value="CARD" class="method-radio-input" 
+                                           ${this.state.checkoutPayment === 'CARD' ? 'checked' : ''}>
+                                    <div class="method-choice-content">
+                                        <div class="method-choice-title">
+                                            <span>Thẻ Quốc tế (Visa / Master / JCB)</span>
+                                        </div>
+                                        <p class="method-choice-desc">
+                                            Cổng thanh toán thẻ quốc tế mã hóa chuẩn PCI-DSS 256-bit an toàn tuyệt đối.
+                                        </p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 4: TRUST & BENEFITS -->
+                        <div class="checkout-section-card" style="padding:18px 24px;">
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px;">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <div style="color:var(--store-emerald);">${window.ICONS?.shieldCheck || '🛡️'}</div>
+                                    <div style="font-size:0.8rem;">
+                                        <strong>100% Chính hãng</strong><br>
+                                        <span style="color:var(--text-muted);">Form dáng Boxy độc quyền</span>
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <div style="color:var(--store-gold);">${window.ICONS?.rotateCcw || '🔄'}</div>
+                                    <div style="font-size:0.8rem;">
+                                        <strong>Đổi trả 30 ngày</strong><br>
+                                        <span style="color:var(--text-muted);">Đổi size tận nơi miễn phí</span>
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <div style="color:var(--status-info-text);">${window.ICONS?.truck || '🚚'}</div>
+                                    <div style="font-size:0.8rem;">
+                                        <strong>Đồng kiểm khi nhận</strong><br>
+                                        <span style="color:var(--text-muted);">Ưng ý mới thanh toán</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: ORDER SUMMARY (STICKY) -->
+                    <div class="checkout-right-col checkout-summary-wrap">
+                        <div class="checkout-summary-card">
+                            <div class="checkout-summary-header">
+                                <h3 class="checkout-summary-title">Đơn Hàng Của Bạn</h3>
+                                <span class="checkout-section-badge" id="checkout-cart-count-badge">0 sản phẩm</span>
+                            </div>
+
+                            <!-- Cart Items List -->
+                            <div class="summary-items-list" id="checkout-items-list">
+                                <!-- Populated dynamically -->
+                            </div>
+
+                            <!-- Coupon Box -->
+                            <div class="checkout-coupon-card">
+                                <div class="coupon-input-group">
+                                    <input type="text" id="checkout-coupon-input" class="coupon-input" 
+                                           placeholder="Mã giảm giá (Coupon)..." 
+                                           value="${this.state.appliedCoupon ? this.state.appliedCoupon.code : ''}">
+                                    <button type="button" class="coupon-apply-btn" onclick="Storefront.applyCheckoutCoupon()">
+                                        Áp Dụng
+                                    </button>
+                                </div>
+
+                                <div id="checkout-active-coupon-badge">
+                                    <!-- Rendered if coupon applied -->
+                                </div>
+
+                                <div class="coupon-suggestions">
+                                    <span style="color:var(--text-muted);">Gợi ý mã:</span>
+                                    <button type="button" class="coupon-pill-btn" onclick="Storefront.applySuggestedCoupon('VASTWELCOME')">
+                                        VASTWELCOME (-100K)
+                                    </button>
+                                    <button type="button" class="coupon-pill-btn" onclick="Storefront.applySuggestedCoupon('VAST50')">
+                                        VAST50 (-50K)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Price Breakdown -->
+                            <div class="checkout-totals-block">
+                                <div class="checkout-totals-row">
+                                    <span>Tạm tính hàng:</span>
+                                    <strong id="checkout-calc-subtotal" style="color:var(--text-primary);">0 ₫</strong>
+                                </div>
+                                <div class="checkout-totals-row">
+                                    <span>Phí vận chuyển:</span>
+                                    <strong id="checkout-calc-shipping" style="color:var(--text-primary);">0 ₫</strong>
+                                </div>
+                                <div class="checkout-totals-row discount-row" id="checkout-calc-discount-row" style="display:none;">
+                                    <span>Giảm giá voucher:</span>
+                                    <strong id="checkout-calc-discount">-0 ₫</strong>
+                                </div>
+                                <div class="checkout-totals-row grand-total">
+                                    <div>
+                                        <span style="display:block;">Tổng thanh toán:</span>
+                                        <small style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(Đã bao gồm thuế & phí)</small>
+                                    </div>
+                                    <strong class="checkout-grand-price" id="checkout-calc-total">0 ₫</strong>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn-submit-order" id="btn-submit-checkout">
+                                <span>Xác Nhận Đặt Hàng</span>
+                                <span data-icon="arrowRight"></span>
+                            </button>
+
+                            <div class="checkout-security-notice">
+                                <span data-icon="shieldCheck"></span>
+                                <span>Thông tin đặt hàng được bảo mật và mã hóa an toàn 100%</span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            `;
+
+            this.updateCheckoutSummary();
+
+            // Refresh icons
+            if (window.ICONS) {
+                container.querySelectorAll('[data-icon]').forEach(el => {
+                    const iconName = el.getAttribute('data-icon');
+                    if (window.ICONS[iconName]) el.innerHTML = window.ICONS[iconName];
+                });
+            }
+        },
+
+        renderCheckoutEmpty(container) {
+            container.innerHTML = `
+                <div class="checkout-empty-box">
+                    <div class="empty-cart-icon-wrap">
+                        <span data-icon="shoppingBag" style="font-size:36px;"></span>
+                    </div>
+                    <h2 style="font-family:var(--store-font-heading); margin:0 0 10px; font-size:1.6rem;">Giỏ Hàng Của Bạn Đang Trống</h2>
+                    <p style="color:var(--text-secondary); margin:0 0 28px; font-size:0.95rem; max-width:440px; margin-inline:auto;">
+                        Bạn chưa chọn sản phẩm nào vào giỏ hàng. Hãy khám phá bộ sưu tập streetwear mới nhất của VAST STUDIO để chọn những món đồ ưng ý nhé!
+                    </p>
+                    <a href="products.html" class="btn-hero-primary" style="display:inline-flex; align-items:center; gap:8px; padding:14px 28px; text-decoration:none;">
+                        <span>Khám Phá Sản Phẩm Ngay</span>
+                        <span data-icon="arrowRight"></span>
+                    </a>
+                </div>
+            `;
+            if (window.ICONS) {
+                container.querySelectorAll('[data-icon]').forEach(el => {
+                    const iconName = el.getAttribute('data-icon');
+                    if (window.ICONS[iconName]) el.innerHTML = window.ICONS[iconName];
+                });
+            }
+        },
+
+        updateCheckoutSummary() {
+            if (!window.StoreModel) return;
+            const cart = window.StoreModel.getCart();
+            const subtotal = window.StoreModel.getCartSubtotal();
+            const freeShipThreshold = 500000;
+
+            // 1. Calculate shipping fee
+            let shippingFee = 0;
+            if (this.state.checkoutShipping === 'express') {
+                shippingFee = 50000;
+            } else {
+                // standard
+                shippingFee = (subtotal >= freeShipThreshold || subtotal === 0) ? 0 : 30000;
+            }
+
+            // 2. Calculate coupon discount
+            let discount = 0;
+            if (this.state.appliedCoupon) {
+                const val = window.StoreModel.validateCoupon(this.state.appliedCoupon.code, subtotal);
+                if (val.valid) {
+                    discount = val.discount;
+                } else {
+                    this.state.appliedCoupon = null;
+                }
+            }
+
+            const grandTotal = Math.max(0, subtotal - discount + shippingFee);
+
+            // 3. Update Shipping cards in DOM
+            const shippingContainer = document.getElementById('shipping-methods-container');
+            if (shippingContainer) {
+                const isFree = subtotal >= freeShipThreshold;
+                shippingContainer.innerHTML = `
+                    <label class="method-choice-card ${this.state.checkoutShipping === 'standard' ? 'active' : ''}" 
+                           onclick="Storefront.changeCheckoutShipping('standard')">
+                        <input type="radio" name="checkoutShipping" value="standard" class="method-radio-input" 
+                               ${this.state.checkoutShipping === 'standard' ? 'checked' : ''}>
+                        <div class="method-choice-content">
+                            <div class="method-choice-title">
+                                <span>Giao hàng Tiêu Chuẩn (2 - 3 ngày)</span>
+                                <div>
+                                    ${isFree ? `<span class="method-badge-free">FREESHIP</span>` : `<span style="font-weight:700;">30.000 ₫</span>`}
+                                </div>
+                            </div>
+                            <p class="method-choice-desc">
+                                ${isFree ? 'Đơn hàng từ 500.000₫ đủ điều kiện Miễn phí vận chuyển toàn quốc.' : 'Miễn phí cho đơn từ 500.000₫ (mua thêm để được freeship).'}
+                            </p>
+                        </div>
+                    </label>
+
+                    <label class="method-choice-card ${this.state.checkoutShipping === 'express' ? 'active' : ''}" 
+                           onclick="Storefront.changeCheckoutShipping('express')">
+                        <input type="radio" name="checkoutShipping" value="express" class="method-radio-input" 
+                               ${this.state.checkoutShipping === 'express' ? 'checked' : ''}>
+                        <div class="method-choice-content">
+                            <div class="method-choice-title">
+                                <span>Giao hàng Hỏa Tốc Express (2 - 4 giờ)</span>
+                                <span style="font-weight:700;">50.000 ₫</span>
+                            </div>
+                            <p class="method-choice-desc">
+                                Áp dụng nội thành Hà Nội & TP.HCM. Shipper giao ngay trong khung giờ bạn chọn.
+                            </p>
+                        </div>
+                    </label>
+                `;
+            }
+
+            // 4. Update Items list in DOM
+            const itemsListEl = document.getElementById('checkout-items-list');
+            const countBadge = document.getElementById('checkout-cart-count-badge');
+            if (countBadge) {
+                const totalQty = window.StoreModel.getCartCount();
+                countBadge.textContent = `${totalQty} sản phẩm`;
+            }
+
+            if (itemsListEl) {
+                itemsListEl.innerHTML = cart.map((item, idx) => `
+                    <div class="summary-item-row">
+                        <img src="${item.image}" alt="${item.name}" class="summary-item-thumb">
+                        <div class="summary-item-info">
+                            <div class="summary-item-name" title="${item.name}">${item.name}</div>
+                            <div class="summary-item-meta">Size: <strong>${item.size}</strong> • Màu: <strong>${item.color}</strong></div>
+                            <div class="summary-item-controls">
+                                <div class="summary-qty-box">
+                                    <button type="button" class="summary-qty-btn" onclick="Storefront.updateCheckoutQty(${idx}, ${item.quantity - 1})">-</button>
+                                    <span class="summary-qty-val">${item.quantity}</span>
+                                    <button type="button" class="summary-qty-btn" onclick="Storefront.updateCheckoutQty(${idx}, ${item.quantity + 1})">+</button>
+                                </div>
+                                <button type="button" class="summary-item-delete" onclick="Storefront.removeCheckoutItem(${idx})" title="Xóa món này">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                        <div class="summary-item-price">
+                            ${this.formatMoney(item.price * item.quantity)}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // 5. Update Active Coupon Badge
+            const couponBadgeContainer = document.getElementById('checkout-active-coupon-badge');
+            if (couponBadgeContainer) {
+                if (this.state.appliedCoupon && discount > 0) {
+                    couponBadgeContainer.innerHTML = `
+                        <div class="coupon-active-badge">
+                            <span>Đang áp dụng mã <strong>${this.state.appliedCoupon.code}</strong> (-${this.formatMoney(discount)})</span>
+                            <button type="button" class="coupon-remove-btn" onclick="Storefront.removeCheckoutCoupon()">Gỡ bỏ</button>
+                        </div>
+                    `;
+                } else {
+                    couponBadgeContainer.innerHTML = '';
+                }
+            }
+
+            // 6. Update Price Breakdown
+            const subtotalEl = document.getElementById('checkout-calc-subtotal');
+            const shippingEl = document.getElementById('checkout-calc-shipping');
+            const discountRowEl = document.getElementById('checkout-calc-discount-row');
+            const discountEl = document.getElementById('checkout-calc-discount');
+            const totalEl = document.getElementById('checkout-calc-total');
+
+            if (subtotalEl) subtotalEl.textContent = this.formatMoney(subtotal);
+            if (shippingEl) shippingEl.textContent = shippingFee === 0 ? 'Miễn phí' : this.formatMoney(shippingFee);
+            if (discountRowEl) {
+                discountRowEl.style.display = discount > 0 ? 'flex' : 'none';
+                if (discountEl) discountEl.textContent = `-${this.formatMoney(discount)}`;
+            }
+            if (totalEl) totalEl.textContent = this.formatMoney(grandTotal);
+        },
+
+        changeCheckoutShipping(method) {
+            this.state.checkoutShipping = method;
+            this.updateCheckoutSummary();
+        },
+
+        changeCheckoutPayment(method) {
+            this.state.checkoutPayment = method;
+            document.querySelectorAll('input[name="checkoutPayment"]').forEach(radio => {
+                const card = radio.closest('.method-choice-card');
+                if (radio.value === method) {
+                    radio.checked = true;
+                    if (card) card.classList.add('active');
+                } else {
+                    radio.checked = false;
+                    if (card) card.classList.remove('active');
+                }
+            });
+        },
+
+        updateCheckoutQty(idx, newQty) {
+            if (!window.StoreModel) return;
+            window.StoreModel.updateCartQuantity(idx, newQty);
+            const cart = window.StoreModel.getCart();
+            if (cart.length === 0) {
+                this.initCheckoutPage();
+            } else {
+                this.updateCheckoutSummary();
+            }
+        },
+
+        removeCheckoutItem(idx) {
+            if (!window.StoreModel) return;
+            window.StoreModel.removeFromCart(idx);
+            this.showToast('Đã xóa sản phẩm khỏi đơn hàng', 'info');
+            const cart = window.StoreModel.getCart();
+            if (cart.length === 0) {
+                this.initCheckoutPage();
+            } else {
+                this.updateCheckoutSummary();
+            }
+        },
+
+        applyCheckoutCoupon() {
+            const input = document.getElementById('checkout-coupon-input');
+            if (!input || !window.StoreModel) return;
+            const code = input.value.trim();
+            this.applyCouponByCode(code);
+        },
+
+        applySuggestedCoupon(code) {
+            const input = document.getElementById('checkout-coupon-input');
+            if (input) input.value = code;
+            this.applyCouponByCode(code);
+        },
+
+        applyCouponByCode(code) {
+            if (!code) {
+                this.showToast('Vui lòng nhập mã giảm giá', 'error');
+                return;
+            }
+            const subtotal = window.StoreModel.getCartSubtotal();
+            const res = window.StoreModel.validateCoupon(code, subtotal);
+            if (!res.valid) {
+                this.showToast(res.message, 'error');
+                return;
+            }
+            this.state.appliedCoupon = res.coupon;
+            this.showToast(`Áp dụng mã ${res.coupon.code} thành công (-${this.formatMoney(res.discount)})!`, 'success');
+            this.updateCheckoutSummary();
+        },
+
+        removeCheckoutCoupon() {
+            this.state.appliedCoupon = null;
+            const input = document.getElementById('checkout-coupon-input');
+            if (input) input.value = '';
+            this.showToast('Đã gỡ mã giảm giá', 'info');
+            this.updateCheckoutSummary();
+        },
+
+        handleCityChange(city) {
+            // Optional hook for city specific adjustments
+        },
+
+        submitCheckoutPage(e) {
+            if (e) e.preventDefault();
+            if (!window.StoreModel) return;
+
+            const name = document.getElementById('checkout-fullname')?.value.trim();
+            const phone = document.getElementById('checkout-phone')?.value.trim();
+            const email = document.getElementById('checkout-email')?.value.trim();
+            const city = document.getElementById('checkout-city')?.value.trim();
+            const district = document.getElementById('checkout-district')?.value.trim();
+            const ward = document.getElementById('checkout-ward')?.value.trim();
+            const addressDetail = document.getElementById('checkout-address-detail')?.value.trim();
+            const note = document.getElementById('checkout-notes')?.value.trim();
+            const saveInfo = document.getElementById('checkout-save-info')?.checked;
+
+            if (!name || !phone || !city || !district || !ward || !addressDetail) {
+                this.showToast('Vui lòng điền đầy đủ các thông tin bắt buộc (*)!', 'error');
+                return;
+            }
+
+            // Simple VN Phone validation (starts with 0, 10 digits)
+            const cleanPhone = phone.replace(/[\s.-]/g, '');
+            if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(cleanPhone)) {
+                this.showToast('Số điện thoại không hợp lệ (cần 10 chữ số, ví dụ 0912345678)!', 'error');
+                document.getElementById('checkout-phone')?.focus();
+                return;
+            }
+
+            const cart = window.StoreModel.getCart();
+            if (cart.length === 0) {
+                this.showToast('Giỏ hàng trống!', 'error');
+                this.initCheckoutPage();
+                return;
+            }
+
+            const subtotal = window.StoreModel.getCartSubtotal();
+            const freeShipThreshold = 500000;
+            const shippingFee = this.state.checkoutShipping === 'express' ? 50000 : ((subtotal >= freeShipThreshold || subtotal === 0) ? 0 : 30000);
+
+            let discount = 0;
+            let couponCode = null;
+            if (this.state.appliedCoupon) {
+                const val = window.StoreModel.validateCoupon(this.state.appliedCoupon.code, subtotal);
+                if (val.valid) {
+                    discount = val.discount;
+                    couponCode = this.state.appliedCoupon.code;
+                }
+            }
+
+            const total = Math.max(0, subtotal - discount + shippingFee);
+            const fullAddress = `${addressDetail}, Phường/Xã ${ward}, Quận/Huyện ${district}, ${city}`;
+
+            let paymentMethodName = 'COD (Thanh toán khi nhận hàng)';
+            if (this.state.checkoutPayment === 'QR') paymentMethodName = 'Chuyển khoản VietQR (Vietcombank)';
+            else if (this.state.checkoutPayment === 'MOMO') paymentMethodName = 'Ví điện tử MoMo';
+            else if (this.state.checkoutPayment === 'CARD') paymentMethodName = 'Thẻ tín dụng Quốc tế (Visa/Mastercard)';
+
+            const shippingMethodName = this.state.checkoutShipping === 'express' ? 'Giao Hỏa Tốc Express (2-4 giờ)' : 'Giao Tiêu Chuẩn (2-3 ngày)';
+
+            // Create order in StoreModel
+            const newOrder = window.StoreModel.createOrder({
+                customerName: name,
+                customerPhone: cleanPhone,
+                customerEmail: email,
+                shippingAddress: fullAddress,
+                shippingMethod: shippingMethodName,
+                note: note,
+                items: cart,
+                subtotal: subtotal,
+                shippingFee: shippingFee,
+                discount: discount,
+                couponCode: couponCode,
+                total: total,
+                paymentMethod: paymentMethodName
+            });
+
+            // Save customer info if requested
+            if (saveInfo) {
+                localStorage.setItem('vast_customer_info', JSON.stringify({
+                    name, phone: cleanPhone, email, city, district, ward, addressDetail, note
+                }));
+            }
+
+            this.state.appliedCoupon = null;
+
+            // Render Success Screen
+            this.renderCheckoutSuccess(newOrder, fullAddress);
+            this.showToast(`Đặt hàng thành công! Mã đơn: ${newOrder.id}`, 'success');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        renderCheckoutSuccess(order, fullAddress) {
+            const container = document.getElementById('checkout-main-content');
+            if (!container) return;
+
+            // Update Steps indicator
+            const stepCheckout = document.getElementById('step-indicator-checkout');
+            const stepDividerSuccess = document.getElementById('step-divider-success');
+            const stepSuccess = document.getElementById('step-indicator-success');
+
+            if (stepCheckout) {
+                stepCheckout.classList.remove('active');
+                stepCheckout.classList.add('done');
+                const numEl = stepCheckout.querySelector('.checkout-step-num');
+                if (numEl) numEl.innerHTML = window.ICONS?.check || '✓';
+            }
+            if (stepDividerSuccess) stepDividerSuccess.classList.add('active');
+            if (stepSuccess) {
+                stepSuccess.classList.add('active');
+            }
+
+            const isQR = (order.paymentMethod || '').includes('QR');
+            // Dynamic VietQR generator URL
+            const vietqrUrl = `https://img.vietqr.io/image/vietcombank-998877665500-compact2.png?amount=${order.total}&addInfo=${encodeURIComponent(order.id + ' ' + order.customerPhone)}&accountName=CONG%20TY%20TNHH%20VAST%20STUDIO%20VIETNAM`;
+
+            container.innerHTML = `
+                <div class="order-success-screen">
+                    <div class="success-icon-badge">✓</div>
+                    <span class="section-label" style="margin-bottom:4px;">Cảm ơn bạn đã mua hàng</span>
+                    <h1 style="font-family:var(--store-font-heading); font-size:2rem; font-weight:800; margin:4px 0 12px; text-transform:uppercase;">
+                        ĐẶT HÀNG THÀNH CÔNG!
+                    </h1>
+                    <p style="color:var(--text-secondary); margin:0 auto 16px; font-size:0.95rem; max-width:540px;">
+                        Đơn hàng của bạn đã được tiếp nhận vào hệ thống quản lý VAST STUDIO. Đội ngũ CSKH sẽ liên hệ xác nhận và tiến hành đóng gói ngay.
+                    </p>
+
+                    <div>
+                        <div class="success-order-id-box">
+                            <span>Mã đơn hàng:</span>
+                            <strong style="color:var(--store-gold);">${order.id}</strong>
+                            <button type="button" class="btn-copy-order-id" onclick="Storefront.copyToClipboard('${order.id}', 'Đã sao chép mã đơn hàng!')" title="Sao chép mã đơn">
+                                📋
+                            </button>
+                        </div>
+                    </div>
+
+                    ${isQR ? `
+                        <!-- VIETQR AUTOMATIC PAYMENT CARD -->
+                        <div class="vietqr-card">
+                            <div class="vietqr-image-wrap">
+                                <img src="${vietqrUrl}" alt="VietQR VAST STUDIO">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
+                                    Quét bằng app ngân hàng bất kỳ
+                                </div>
+                            </div>
+                            <div>
+                                <h3 style="font-family:var(--store-font-heading); margin:0 0 8px; font-size:1.15rem; color:var(--text-primary);">
+                                    Hướng Dẫn Thanh Toán VietQR Tự Động
+                                </h3>
+                                <p style="font-size:0.85rem; color:var(--text-secondary); margin:0 0 14px;">
+                                    Mở ứng dụng ngân hàng hoặc ví điện tử bất kỳ, chọn <strong>Quét mã QR</strong> để chuyển tiền với thông tin chính xác tuyệt đối.
+                                </p>
+                                <div class="bank-info-grid">
+                                    <div class="bank-info-row">
+                                        <span style="color:var(--text-muted);">Ngân hàng:</span>
+                                        <strong>Vietcombank (Ngoại thương VN)</strong>
+                                    </div>
+                                    <div class="bank-info-row">
+                                        <span style="color:var(--text-muted);">Số tài khoản:</span>
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <strong style="font-family:monospace; color:var(--store-gold); font-size:1.05rem;">9988 7766 5500</strong>
+                                            <button type="button" class="coupon-pill-btn" style="padding:2px 6px;" onclick="Storefront.copyToClipboard('998877665500', 'Đã chép số tài khoản!')">Chép STK</button>
+                                        </div>
+                                    </div>
+                                    <div class="bank-info-row">
+                                        <span style="color:var(--text-muted);">Chủ tài khoản:</span>
+                                        <strong>CONG TY TNHH VAST STUDIO VIETNAM</strong>
+                                    </div>
+                                    <div class="bank-info-row">
+                                        <span style="color:var(--text-muted);">Số tiền chuyển:</span>
+                                        <strong style="font-family:var(--store-font-heading); color:var(--store-gold); font-size:1.1rem;">${this.formatMoney(order.total)}</strong>
+                                    </div>
+                                    <div class="bank-info-row">
+                                        <span style="color:var(--text-muted);">Nội dung chuyển:</span>
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <strong style="font-family:monospace; color:var(--text-primary); font-size:0.95rem;">${order.id} ${order.customerPhone}</strong>
+                                            <button type="button" class="coupon-pill-btn" style="padding:2px 6px;" onclick="Storefront.copyToClipboard('${order.id} ${order.customerPhone}', 'Đã chép nội dung chuyển tiền!')">Chép ND</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- ORDER OVERVIEW DETAILS -->
+                    <table class="order-overview-table">
+                        <tbody>
+                            <tr>
+                                <td>Người nhận hàng:</td>
+                                <td><strong>${order.customerName}</strong> (${order.customerPhone})</td>
+                            </tr>
+                            ${order.customerEmail ? `
+                            <tr>
+                                <td>Email nhận thông báo:</td>
+                                <td>${order.customerEmail}</td>
+                            </tr>
+                            ` : ''}
+                            <tr>
+                                <td>Địa chỉ giao hàng:</td>
+                                <td>${order.shippingAddress || fullAddress}</td>
+                            </tr>
+                            <tr>
+                                <td>Phương thức giao:</td>
+                                <td>${order.shippingMethod || 'Giao hàng tiêu chuẩn (2-3 ngày)'}</td>
+                            </tr>
+                            <tr>
+                                <td>Hình thức thanh toán:</td>
+                                <td><strong>${order.paymentMethod}</strong> (${order.paymentStatus || 'Chờ xác nhận'})</td>
+                            </tr>
+                            ${order.note ? `
+                            <tr>
+                                <td>Ghi chú đơn hàng:</td>
+                                <td><em>${order.note}</em></td>
+                            </tr>
+                            ` : ''}
+                            <tr>
+                                <td>Tổng giá trị thanh toán:</td>
+                                <td>
+                                    <strong style="font-family:var(--store-font-heading); font-size:1.2rem; color:var(--store-gold);">
+                                        ${this.formatMoney(order.total)}
+                                    </strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- MINI ITEMS RECEIPT -->
+                    <div class="order-items-mini-list">
+                        <h4 style="margin:0 0 10px; font-size:0.9rem; text-transform:uppercase; letter-spacing:0.02em;">Danh Sách Sản Phẩm Đặt Mua (${(order.items || []).length})</h4>
+                        ${(order.items || []).map(item => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border-subtle); font-size:0.85rem;">
+                                <div>
+                                    <strong>${item.name}</strong> 
+                                    <span style="color:var(--text-muted); font-size:0.78rem;">(Size ${item.size} • ${item.color} • x${item.quantity})</span>
+                                </div>
+                                <strong>${this.formatMoney(item.price * item.quantity)}</strong>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- ACTION BUTTONS -->
+                    <div class="success-action-btns">
+                        <a href="order-tracking.html?order=${order.id}" class="btn-hero-primary" style="text-decoration:none; padding:14px 24px;">
+                            <span data-icon="truck"></span> Tra Cứu Tiến Độ Đơn
+                        </a>
+                        <button type="button" class="btn-hero-outline" onclick="window.print()" style="padding:14px 20px;">
+                            <span data-icon="printer"></span> In Hóa Đơn
+                        </button>
+                        <a href="products.html" class="btn-hero-outline" style="text-decoration:none; padding:14px 24px;">
+                            Tiếp Tục Mua Sắm
+                        </a>
+                        <a href="admin.html" class="btn-hero-outline" target="_blank" style="text-decoration:none; padding:14px 18px; font-size:0.85rem;" title="Xem đơn trên trang Admin">
+                            <span data-icon="dashboard"></span> Quản Trị
+                        </a>
+                    </div>
+                </div>
+            `;
+
+            if (window.ICONS) {
+                container.querySelectorAll('[data-icon]').forEach(el => {
+                    const iconName = el.getAttribute('data-icon');
+                    if (window.ICONS[iconName]) el.innerHTML = window.ICONS[iconName];
+                });
+            }
+        },
+
+        copyToClipboard(text, msg) {
+            navigator.clipboard.writeText(text).then(() => {
+                this.showToast(msg || 'Đã sao chép vào bộ nhớ tạm!', 'success');
+            }).catch(() => {
+                this.showToast('Đã sao chép: ' + text, 'info');
+            });
+        },
+
+        // ======================================================================
         // WISHLIST DRAWER LOGIC
         // ======================================================================
         openWishlist() {
@@ -1431,16 +2277,12 @@
         // --- CHECKOUT MODAL LOGIC ---
         openCheckoutModal() {
             if (!window.StoreModel || window.StoreModel.getCartCount() === 0) {
-                this.showToast('Giỏ hàng trống!', 'error');
+                this.showToast('Giỏ hàng của bạn đang trống!', 'error');
                 return;
             }
 
             this.closeCart();
-            const overlay = document.getElementById('checkout-modal-overlay');
-            if (overlay) {
-                overlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
+            window.location.href = 'checkout.html';
         },
 
         closeCheckoutModal() {
