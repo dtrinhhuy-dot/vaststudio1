@@ -79,7 +79,7 @@
             stock: 18,
             sizes: ['S', 'M', 'L', 'XL'],
             colors: ['Xám Bạc Acid', 'Đen Tuyển'],
-            image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Acid Wash Hoodie', '#1c1917'),
             description: 'Nỉ bông lót cào cao cấp 400GSM siêu ấm. Xử lý wash hiệu ứng sờn rách nghệ thuật, mũ 2 lớp phồng đứng.',
             status: 'active',
@@ -151,7 +151,7 @@
             stock: 3,
             sizes: ['M', 'L'],
             colors: ['Kem Vanilla', 'Nâu Mocha'],
-            image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1525450824786-227cbef70703?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Textured Knit Sweater', '#44403c'),
             description: 'Sợi len dệt quả trám mềm mịn không ngứa. Form oversize trẻ trung cho mùa lạnh.',
             status: 'active',
@@ -187,7 +187,7 @@
             stock: 38,
             sizes: ['S', 'M', 'L', 'XL'],
             colors: ['Đen Khói Acid', 'Xám Bê Tông'],
-            image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Cyber Acid Tee', '#18181b'),
             description: 'Họa tiết graphic in lụa thủ công hiệu ứng Cyber Acid độc quyền. Chất liệu cotton 260GSM thoáng mát, chống bai nhão cổ.',
             status: 'active',
@@ -259,7 +259,7 @@
             stock: 27,
             sizes: ['M', 'L', 'XL'],
             colors: ['Trắng Cát', 'Xanh Olive Nhạt'],
-            image: 'https://images.unsplash.com/photo-1607345366928-199ea26cfe3e?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Cuban Collar Shirt', '#e2e8f0'),
             description: 'Chất vải pha đũi Linen cao cấp mát lạnh, phom suông phóng khoáng mang lại cảm giác nhẹ nhàng, tinh tế cho những ngày hè.',
             status: 'active',
@@ -277,7 +277,7 @@
             stock: 19,
             sizes: ['M', 'L', 'XL'],
             colors: ['Xanh Khói Wash', 'Chàm Indigo Đậm'],
-            image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1589310243389-96a5483213a8?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Western Denim Overshirt', '#1e3a8a'),
             description: 'Vải denim 9oz wash màu khói bụi bặm, túi nắp kép trước ngực và đường cúp vai Western chuẩn vintage nam tính.',
             status: 'active',
@@ -295,7 +295,7 @@
             stock: 16,
             sizes: ['S', 'M', 'L', 'XL'],
             colors: ['Đen Midnight', 'Xám Tiêu Melange'],
-            image: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Double Zip Hoodie', '#111827'),
             description: 'Nỉ chân cua 380GSM form hộp đứng phom. Khóa kéo 2 chiều YKK kim loại mạ bạc tiện lợi biến tấu dáng mặc, túi kangaroo xẻ đôi.',
             status: 'active',
@@ -313,7 +313,7 @@
             stock: 22,
             sizes: ['M', 'L', 'XL'],
             colors: ['Xanh Cổ Vịt', 'Xám Tro'],
-            image: 'https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1584030373081-f37b7bb4fa8e?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Crewneck Archive', '#134e4a'),
             description: 'Cổ tròn dày 3cm chống dão, logo VAST Archive thêu xù nổi bật trước ngực. Chất vải nỉ da cá thoáng khí mặc được cả 4 mùa.',
             status: 'active',
@@ -331,7 +331,7 @@
             stock: 14,
             sizes: ['M', 'L'],
             colors: ['Họa Tiết Đen Trắng', 'Nâu Đất Houndstooth'],
-            image: 'https://images.unsplash.com/photo-1548883354-7622d03aca27?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Oversized Cardigan', '#27272a'),
             description: 'Len dệt phối màu tương phản, viền cổ chữ V khoét sâu cùng cúc áo sừng tự nhiên. Phong cách Parisian chic kết hợp Streetwear.',
             status: 'active',
@@ -421,7 +421,7 @@
             stock: 25,
             sizes: ['S', 'M', 'L', 'XL'],
             colors: ['Đen Phối Phản Quang', 'Xám Bạc'],
-            image: 'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Techwear Windbreaker', '#18181b'),
             description: 'Vải dù Gore-Tex chống thấm nước tuyệt đối, cản gió giữ ấm và có mũ trùm giấu cổ tiện lợi. Nhiều ngăn túi zip chống nước bí mật.',
             status: 'active',
@@ -729,19 +729,31 @@
                 localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(SEED_PRODUCTS));
             } else {
                 try {
-                    const currentProducts = JSON.parse(storedProducts);
+                    let currentProducts = JSON.parse(storedProducts);
                     if (Array.isArray(currentProducts)) {
+                        const seedMap = new Map(SEED_PRODUCTS.map(p => [p.id, p]));
+                        // Synchronize product images and core metadata with updated seeds
+                        currentProducts = currentProducts.map(p => {
+                            const seed = seedMap.get(p.id);
+                            if (seed) {
+                                return {
+                                    ...p,
+                                    image: seed.image,
+                                    fallbackImage: seed.fallbackImage,
+                                    name: seed.name,
+                                    category: seed.category,
+                                    description: seed.description
+                                };
+                            }
+                            return p;
+                        });
                         const existingIds = new Set(currentProducts.map(p => p.id));
-                        let hasNew = false;
                         for (const seed of SEED_PRODUCTS) {
                             if (!existingIds.has(seed.id)) {
                                 currentProducts.push(seed);
-                                hasNew = true;
                             }
                         }
-                        if (hasNew) {
-                            localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(currentProducts));
-                        }
+                        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(currentProducts));
                     }
                 } catch (e) {
                     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(SEED_PRODUCTS));
