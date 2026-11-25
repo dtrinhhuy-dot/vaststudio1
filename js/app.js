@@ -24,7 +24,7 @@ window.toggleNotificationsModal = () => {
 window.handleGlobalSearch = (e) => window.AppController.handleGlobalSearch(e);
 window.confirmResetData = () => window.AppController.confirmResetData();
 window.openStorefrontDemo = () => {
-    window.location.href = 'index.html';
+    window.location.href = 'index.php';
 };
 
 // Product Actions
