@@ -1,17 +1,15 @@
 {
   "name": "vast-studio-admin",
   "version": "2.0.0",
-  "description": "Cửa hàng thời trang & Trang quản trị VAST STUDIO (PHP & Laragon)",
+  "description": "Cửa hàng thời trang & Trang quản trị VAST STUDIO (PHP Core)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
-    "php": "C:\\laragon\\bin\\php\\php-8.1.10-Win32-vs16-x64\\php.exe -S localhost:3000"
+    "dev": "node server.js"
   },
   "keywords": [
     "vast-studio",
     "fashion",
-    "laragon",
     "php",
     "ecommerce"
   ],

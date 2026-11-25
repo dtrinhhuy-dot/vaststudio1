@@ -38,11 +38,9 @@ console.log('║         ╚██╗ ██╔╝██╔══██║╚═
 console.log('║          ╚████╔╝ ██║  ██║███████║   ██║     ███████║   ██║        ║');
 console.log('║           ╚═══╝  ╚═╝  ╚═╝╚══════╝   ╚═╝     ╚══════╝   ╚═╝        ║');
 console.log('║                                                                   ║');
-console.log('║          VAST STUDIO — STREETWEAR CORE (PHP & LARAGON)            ║');
+console.log('║                 VAST STUDIO — STREETWEAR CORE                     ║');
 console.log('║                                                                   ║');
-console.log(`║  ➜ Local PHP:    http://localhost:${PORT}                            ║`);
-console.log('║  ➜ Laragon URL:  http://localhost/vaststudio                      ║');
-console.log('║  ➜ Laragon VHost: http://vaststudio.test                           ║');
+console.log(`║  ➜ Local:        http://localhost:${PORT}                            ║`);
 console.log('║                                                                   ║');
 console.log('║  Nhấn Ctrl + C để dừng máy chủ.                                   ║');
 console.log('╚═══════════════════════════════════════════════════════════════════╝');
@@ -54,8 +52,6 @@ const phpServer = spawn(phpExe, ['-S', `${HOST}:${PORT}`, '-t', __dirname], {
 
 phpServer.on('error', (err) => {
     console.error('[VAST STUDIO] Lỗi khi chạy PHP Server:', err.message);
-    console.log('Mẹo: Bạn có thể mở trực tiếp qua Laragon bằng cách bật nút "Start All"');
-    console.log('và truy cập http://localhost/vaststudio trên trình duyệt.');
 });
 
 phpServer.on('close', (code) => {
