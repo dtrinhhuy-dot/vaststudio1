@@ -46,7 +46,7 @@ require_once __DIR__ . '/includes/config.php';
                         <span class="nav-icon" data-icon="products"></span>
                         <span>Sản phẩm</span>
                     </div>
-                    <span class="nav-badge" id="sidebar-products-count">8</span>
+                    <span class="nav-badge" id="sidebar-products-count">28</span>
                 </div>
 
                 <div class="nav-item" data-tab="orders" onclick="navigateToTab('orders')">
