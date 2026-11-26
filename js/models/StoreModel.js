@@ -8,7 +8,7 @@
     'use strict';
 
     const STORAGE_KEYS = {
-        PRODUCTS: 'vast_products_v1',
+        PRODUCTS: 'vast_products_v4',
         ORDERS: 'vast_orders_v1',
         COLLECTIONS: 'vast_collections_v1',
         CUSTOMERS: 'vast_customers_v1',
@@ -79,7 +79,7 @@
             stock: 18,
             sizes: ['S', 'M', 'L', 'XL'],
             colors: ['Xám Bạc Acid', 'Đen Tuyển'],
-            image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1516826957135-700dedea698c?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Acid Wash Hoodie', '#1c1917'),
             description: 'Nỉ bông lót cào cao cấp 400GSM siêu ấm. Xử lý wash hiệu ứng sờn rách nghệ thuật, mũ 2 lớp phồng đứng.',
             status: 'active',
@@ -187,7 +187,7 @@
             stock: 38,
             sizes: ['S', 'M', 'L', 'XL'],
             colors: ['Đen Khói Acid', 'Xám Bê Tông'],
-            image: 'https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Cyber Acid Tee', '#18181b'),
             description: 'Họa tiết graphic in lụa thủ công hiệu ứng Cyber Acid độc quyền. Chất liệu cotton 260GSM thoáng mát, chống bai nhão cổ.',
             status: 'active',
@@ -223,7 +223,7 @@
             stock: 35,
             sizes: ['S', 'M', 'L', 'XL'],
             colors: ['Kẻ Sọc Đen Trắng', 'Kẻ Sọc Xám Khói'],
-            image: 'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1584030373081-f37b7bb4fa8e?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Striped Long-Sleeve', '#18181b'),
             description: 'Thiết kế sọc ngang monochrome đen trắng kinh điển, bo tay cotton spandex co giãn êm ái, form drop-shoulder cá tính.',
             status: 'active',
@@ -313,7 +313,7 @@
             stock: 22,
             sizes: ['M', 'L', 'XL'],
             colors: ['Xanh Cổ Vịt', 'Xám Tro'],
-            image: 'https://images.unsplash.com/photo-1584030373081-f37b7bb4fa8e?w=500&auto=format&fit=crop&q=80',
+            image: 'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=500&auto=format&fit=crop&q=80',
             fallbackImage: createFashionPlaceholder('Crewneck Archive', '#134e4a'),
             description: 'Cổ tròn dày 3cm chống dão, logo VAST Archive thêu xù nổi bật trước ngực. Chất vải nỉ da cá thoáng khí mặc được cả 4 mùa.',
             status: 'active',
@@ -724,6 +724,11 @@
         }
 
         initSeeds() {
+            // Clear legacy cached product keys so browser displays pristine verified images
+            ['vast_products_v1', 'vast_products_v2', 'vast_products_v3'].forEach(k => {
+                try { localStorage.removeItem(k); } catch (e) {}
+            });
+
             const storedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
             if (!storedProducts) {
                 localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(SEED_PRODUCTS));

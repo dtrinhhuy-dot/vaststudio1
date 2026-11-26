@@ -8,6 +8,8 @@ if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
 
+require_once __DIR__ . '/database.php';
+
 // Global App Constants
 define('APP_NAME', 'VAST STUDIO');
 define('APP_SLOGAN', 'Streetwear Core');

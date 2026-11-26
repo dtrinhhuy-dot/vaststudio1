@@ -1,8 +1,8 @@
 # VAST STUDIO — THƯƠNG HIỆU THỜI TRANG STREETWEAR & HỆ THỐNG QUẢN TRỊ (CHUẨN KIẾN TRÚC MVC)
 
-Hệ thống website thương mại điện tử **VAST STUDIO** được thiết kế và tổ chức chuẩn mực theo mô hình kiến trúc **MVC (Model — View — Controller)**, phân tách hoàn toàn giữa Dữ liệu nghiệp vụ, Giao diện hiển thị và Luồng điều khiển.
+Hệ thống website thương mại điện tử **VAST STUDIO** gồm storefront và trang quản trị. Trang quản trị dùng MVC thuần PHP, lưu dữ liệu MySQL và xử lý biểu mẫu bằng request GET/POST; storefront hiện vẫn dùng JavaScript và LocalStorage.
 
-Hệ thống bao gồm đầy đủ **Giao diện Khách hàng (Storefront: Trang chủ, Danh sách sản phẩm, Chi tiết sản phẩm, Tra cứu đơn hàng, Giới thiệu, Liên hệ Showroom, Giỏ hàng, Yêu thích)** và **Giao diện Quản trị (Admin Portal)**, đồng bộ dữ liệu thời gian thực thông qua `StoreModel` & `LocalStorage`.
+Hệ thống bao gồm đầy đủ **Giao diện Khách hàng (Storefront: Trang chủ, Danh sách sản phẩm, Chi tiết sản phẩm, Tra cứu đơn hàng, Giới thiệu, Liên hệ Showroom, Giỏ hàng, Yêu thích)** và **Giao diện Quản trị (Admin Portal)**.
 
 ---
 
@@ -16,7 +16,7 @@ Hệ thống bao gồm đầy đủ **Giao diện Khách hàng (Storefront: Tran
 | **Trang Tra Cứu Đơn Hàng** | `order-tracking.html` | Tra cứu theo Mã đơn (`VAST-xxxx`) hoặc SĐT: Timeline 4 giai đoạn trực quan, chi tiết kiện hàng, thanh toán, hủy đơn khi còn chờ xử lý. |
 | **Trang Giới Thiệu** | `about.html` | Câu chuyện thương hiệu VAST STUDIO, triết lý thiết kế tối giản, 4 trụ cột chất liệu và cột mốc phát triển. |
 | **Trang Liên Hệ & Showroom** | `contact.html` | Địa chỉ 2 showroom Flagship tại Hà Nội & TP.HCM, giờ mở cửa, form liên hệ gửi tin nhắn CSKH trực tuyến. |
-| **Trang Quản Trị** | `admin.html` | Dashboard KPI, Biểu đồ doanh thu 7d/30d, Quản lý sản phẩm (CRUD), Quản lý đơn hàng, In phiếu hóa đơn, Quản lý Voucher & Cài đặt shop. |
+| **Trang Quản Trị** | `admin.php` | MVC thuần PHP: Dashboard, CRUD sản phẩm, trạng thái/chi tiết đơn hàng, bộ sưu tập, khách hàng, voucher và cài đặt shop. |
 
 ---
 
@@ -30,7 +30,18 @@ d:\vaststudio\
 ├── order-tracking.html         # [V] Trang tra cứu đơn hàng & Timeline vận chuyển
 ├── about.html                  # [V] Trang giới thiệu & Câu chuyện thương hiệu
 ├── contact.html                # [V] Trang liên hệ & Hệ thống Showroom trực tiếp
-├── admin.html                  # [V] Trang quản trị cửa hàng (Admin Dashboard)
+├── admin.html                  # Alias chuyển tiếp đến admin.php
+├── admin.php                   # [C] Điểm vào trang quản trị PHP
+├── views\
+│   └── admin.php               # [V] Giao diện quản trị PHP
+├── includes\
+│   ├── AdminController.php     # [C] Điều phối request và thao tác quản trị
+│   ├── AdminStoreModel.php     # [M] Truy vấn dữ liệu quản trị MySQL
+│   └── database.php            # Kết nối PDO
+├── database\
+│   ├── schema.sql              # Schema MySQL
+│   ├── setup.php               # Khởi tạo database/schema
+│   └── create-admin.php        # CLI tạo tài khoản role admin
 ├── home.html                   # [V] Redirect alias -> index.html
 ├── shop.html                   # [V] Redirect alias -> products.html
 │
@@ -45,37 +56,23 @@ d:\vaststudio\
 │   ├── models\                 # [M] - MODEL LAYER: Quản lý dữ liệu & nghiệp vụ
 │   │   └── StoreModel.js       # Quản lý Sản phẩm, Giỏ hàng, Wishlist, Đơn hàng, Đánh giá, Voucher, LocalStorage
 │   │
-│   ├── views\                  # [V] - VIEW LAYER: Kết xuất giao diện Admin
-│   │   ├── CommonView.js       # Toast notifications, Quản lý Modal, Đổi Theme
-│   │   ├── DashboardView.js    # Biểu đồ SVG, thẻ thống kê KPI, danh sách bán chạy
-│   │   ├── ProductView.js      # Bảng sản phẩm, form thêm/sửa, badge tồn kho
-│   │   └── OrderView.js        # Bảng đơn hàng, popup chi tiết, in hóa đơn giao hàng
-│   │
-│   ├── controllers\            # [C] - CONTROLLER LAYER: Xử lý nghiệp vụ Admin
-│   │   ├── ProductController.js# Form sản phẩm, tìm kiếm, lọc kho, xóa
-│   │   ├── OrderController.js  # Cập nhật trạng thái đơn, lọc tab, in phiếu
-│   │   ├── DashboardController.js # Thống kê doanh thu, biểu đồ 7d/30d
-│   │   └── AppController.js    # Điều hướng chuyển tab, cài đặt shop
-│   │
-│   └── app.js                  # Entry Point Admin Bootstrap & Global Helpers
-│
-├── server.js                   # Web Server tĩnh Node.js (Zero-dependency)
+├── server.js                   # Khởi chạy PHP development server
 ├── package.json                # Cấu hình dự án & Scripts
 └── README.md                   # Tài liệu hướng dẫn
 ```
 
 ---
 
-## 🔄 LUỒNG TƯƠNG TÁC ĐỒNG BỘ 2 CHIỀU GIỮA STOREFRONT & ADMIN
+## 🔄 DỮ LIỆU STOREFRONT VÀ ADMIN
 
-1. **Quản trị viên thêm/sửa sản phẩm trên `admin.html`**:
-   - Dữ liệu lưu tức thời vào `StoreModel`.
-   - Các trang `index.html`, `products.html`, `product-detail.html` cập nhật sản phẩm mới ngay lập tức.
-2. **Khách hàng đặt hàng trên Storefront**:
+1. **Quản trị viên thao tác trên `admin.php`**:
+   - Sản phẩm, đơn hàng, bộ sưu tập, khách hàng, voucher và cài đặt được đọc/ghi vào MySQL.
+   - Mỗi thao tác gửi biểu mẫu lên PHP và tải lại trang; trang quản trị không nạp JavaScript.
+2. **Storefront**:
    - Đơn hàng được tạo kèm mã `VAST-XXXX` (VD: `VAST-9826`).
    - Tồn kho sản phẩm tự động giảm, số lượt bán tự động tăng.
-   - Quản trị viên mở `admin.html` sẽ thấy ngay đơn hàng mới xuất hiện trong danh sách Đơn Hàng cần xử lý!
    - Khách hàng có thể sao chép mã đơn và vào ngay `order-tracking.html` để theo dõi tiến độ giao hàng!
+   - Storefront hiện dùng LocalStorage riêng; đồng bộ dữ liệu giữa storefront và MySQL chưa được triển khai.
 3. **Mã giảm giá (Coupons)**:
    - Các mã ưu đãi: `VASTWELCOME` (giảm 100k), `FREESHIP` (freeship 300k), `SUMMER50K` (-50k), `VIPMEMBER` (giảm 15%) áp dụng tức thì tại giỏ hàng.
 
@@ -84,18 +81,22 @@ d:\vaststudio\
 ## 🚀 HƯỚNG DẪN KHỞI CHẠY HỆ THỐNG
 
 ### Cách 1: Khởi chạy bằng Node.js Server (Khuyên dùng)
-Mở Terminal tại thư mục dự án và chạy:
-```bash
+Mở Command Prompt và chạy:
+```cmd
+cd /d C:\laragon\www\vaststudio
+php database\setup.php
 npm start
-# hoặc: node server.js
 ```
+- Bật MySQL trong Laragon trước. `setup.php` sẽ tạo schema trên database mới hoặc nhận diện database cũ và giữ nguyên các bảng/dữ liệu hiện có.
+- Truy cập từ `localhost`/`127.0.0.1` không cần đăng nhập. Khi truy cập từ máy khác, tạo tài khoản quản trị bằng cách cấp `ADMIN_INITIAL_PASSWORD` qua môi trường (tối thiểu 12 ký tự), sau đó chạy `php database/create-admin.php "VAST Admin" admin@example.com`. Tài khoản không có role `admin` không thể vào trang quản trị.
+- Có thể cấu hình kết nối qua `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` (mặc định: `127.0.0.1:3306`, `vaststudio`, `root`, mật khẩu rỗng).
 - **Trang chủ Khách hàng**: [http://localhost:3000](http://localhost:3000)
 - **Trang danh sách sản phẩm**: [http://localhost:3000/products.html](http://localhost:3000/products.html)
 - **Trang chi tiết sản phẩm**: [http://localhost:3000/product-detail.html?id=PRD-001](http://localhost:3000/product-detail.html?id=PRD-001)
 - **Trang tra cứu đơn hàng**: [http://localhost:3000/order-tracking.html](http://localhost:3000/order-tracking.html)
 - **Trang giới thiệu thương hiệu**: [http://localhost:3000/about.html](http://localhost:3000/about.html)
 - **Trang liên hệ & Showroom**: [http://localhost:3000/contact.html](http://localhost:3000/contact.html)
-- **Trang quản trị Admin**: [http://localhost:3000/admin.html](http://localhost:3000/admin.html)
+- **Trang quản trị Admin**: [http://localhost:3000/admin.php](http://localhost:3000/admin.php)
 
 ### Cách 2: Mở trực tiếp trên Trình duyệt
 - [index.html](file:///d:/vaststudio/index.html) — Trang Chủ
@@ -104,7 +105,7 @@ npm start
 - [order-tracking.html](file:///d:/vaststudio/order-tracking.html) — Trang Tra Cứu Đơn Hàng
 - [about.html](file:///d:/vaststudio/about.html) — Trang Giới Thiệu
 - [contact.html](file:///d:/vaststudio/contact.html) — Trang Liên Hệ & Showroom
-- [admin.html](file:///d:/vaststudio/admin.html) — Trang Quản Trị Cửa Hàng
+- Các trang PHP và cơ sở dữ liệu cần chạy qua máy chủ PHP; không mở `admin.php` bằng `file://`.
 
 ---
 

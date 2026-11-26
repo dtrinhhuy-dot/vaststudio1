@@ -1,6 +1,6 @@
 // ==========================================================================
 // VAST STUDIO — PHP Development Server Runner
-// Automatically uses Laragon PHP or System PHP
+// Automatically uses Laragon, XAMPP, or System PHP
 // Run: npm run dev or node server.js
 // ==========================================================================
 
@@ -13,6 +13,7 @@ const HOST = '127.0.0.1';
 
 // Search for Laragon PHP or global php
 const possiblePhpPaths = [
+    'C:\\xampp\\php\\php.exe',
     'C:\\laragon\\bin\\php\\php-8.1.10-Win32-vs16-x64\\php.exe',
     'C:\\laragon\\bin\\php\\php-8.3.30-Win32-vs16-x64\\php.exe',
     'C:\\laragon\\bin\\php\\php-8.2\\php.exe',
