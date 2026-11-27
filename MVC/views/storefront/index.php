@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 $pageTitle = "VAST STUDIO — Trang Chủ | Modern Streetwear & Minimalist Fashion";
 $pageDesc = "VAST STUDIO — Thương hiệu thời trang streetwear tối giản cao cấp. Khám phá các mẫu Boxy Tee, Oversized Shirt, Cargo Pants, Denim và Bomber Jackets chuẩn form Á Đông.";
 $activeNav = "home";
-include __DIR__ . '/includes/header.php';
+include __DIR__ . '/../partials/header.php';
 ?>
 
 <!-- 3. HERO EDITORIAL SECTION -->
@@ -155,7 +155,7 @@ include __DIR__ . '/includes/header.php';
                     <h2 class="section-heading">Top Bán Chạy VAST</h2>
                     <p class="section-subheading">Những mẫu trang phục streetwear luôn trong tình trạng "cháy hàng" của VAST STUDIO.</p>
                 </div>
-                <a href="products.html?sort=popular" class="section-view-all-link">
+                <a href="products.php?sort=popular" class="section-view-all-link">
                     Xem toàn bộ sản phẩm hot <span data-icon="arrowRight"></span>
                 </a>
             </div>
@@ -327,5 +327,5 @@ include __DIR__ . '/includes/header.php';
     </section>
 
 <?php
-include __DIR__ . '/includes/footer.php';
+include __DIR__ . '/../partials/footer.php';
 ?>

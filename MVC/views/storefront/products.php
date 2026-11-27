@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 $pageTitle = "Danh Sách Sản Phẩm — VAST STUDIO | Cửa Hàng Streetwear & Minimalist";
 $pageDesc = "Danh sách đầy đủ sản phẩm thời trang VAST STUDIO: Áo thun Boxy Tee, Sơ mi Oxford, Quần Cargo dù, Wide-leg Denim, Áo khoác Bomber và phụ kiện thời trang.";
 $activeNav = "products";
-include __DIR__ . '/includes/header.php';
+include __DIR__ . '/../partials/header.php';
 ?>
 
 <!-- 3. SHOP PAGE MAIN WRAPPER -->
@@ -190,5 +190,5 @@ include __DIR__ . '/includes/header.php';
     </main>
 
 <?php
-include __DIR__ . '/includes/footer.php';
+include __DIR__ . '/../partials/footer.php';
 ?>

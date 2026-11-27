@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 $pageTitle = "Thanh Toán Đơn Hàng — VAST STUDIO | Xác Nhận Mua Hàng Nhanh Chóng";
 $pageDesc = "Trang thanh toán đặt hàng thời trang VAST STUDIO. Hỗ trợ thanh toán khi nhận hàng (COD), chuyển khoản VietQR tự động, bảo mật tối đa và giao hàng toàn quốc.";
 $activeNav = "";
-include __DIR__ . '/includes/header.php';
+include __DIR__ . '/../partials/header.php';
 ?>
 
 <!-- 3. CHECKOUT HERO & STEPS -->
@@ -44,5 +44,5 @@ include __DIR__ . '/includes/header.php';
     </main>
 
 <?php
-include __DIR__ . '/includes/footer.php';
+include __DIR__ . '/../partials/footer.php';
 ?>

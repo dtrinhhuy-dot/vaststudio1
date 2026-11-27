@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 $pageTitle = "Liên Hệ & Hệ Thống Showroom — VAST STUDIO | Cửa Hàng Thời Trang";
 $pageDesc = "Thông tin liên hệ, hotline tư vấn và địa chỉ 2 showroom Flagship Store của VAST STUDIO tại Hà Nội và TP.HCM.";
 $activeNav = "contact";
-include __DIR__ . '/includes/header.php';
+include __DIR__ . '/../partials/header.php';
 ?>
 
 <!-- 3. MAIN CONTACT CONTENT -->
@@ -140,5 +140,5 @@ include __DIR__ . '/includes/header.php';
     </main>
 
 <?php
-include __DIR__ . '/includes/footer.php';
+include __DIR__ . '/../partials/footer.php';
 ?>

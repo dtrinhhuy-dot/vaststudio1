@@ -47,7 +47,13 @@ console.log('║  Nhấn Ctrl + C để dừng máy chủ.                      
 console.log('╚═══════════════════════════════════════════════════════════════════╝');
 console.log('\n');
 
-const phpServer = spawn(phpExe, ['-S', `${HOST}:${PORT}`, '-t', __dirname], {
+const phpServer = spawn(phpExe, [
+    '-S',
+    `${HOST}:${PORT}`,
+    '-t',
+    __dirname,
+    path.join(__dirname, 'MVC', 'router.php')
+], {
     stdio: 'inherit'
 });
 

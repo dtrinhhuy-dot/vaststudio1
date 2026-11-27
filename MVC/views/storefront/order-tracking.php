@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 $pageTitle = "Tra Cứu Đơn Hàng — VAST STUDIO | Theo Dõi Tiến Độ Giao Hàng";
 $pageDesc = "Tra cứu trạng thái và tiến độ giao hàng đơn hàng thời trang VAST STUDIO nhanh chóng bằng mã đơn hoặc số điện thoại.";
 $activeNav = "tracking";
-include __DIR__ . '/includes/header.php';
+include __DIR__ . '/../partials/header.php';
 ?>
 
 <!-- 3. MAIN TRACKING CONTENT -->
@@ -59,5 +59,5 @@ include __DIR__ . '/includes/header.php';
     </main>
 
 <?php
-include __DIR__ . '/includes/footer.php';
+include __DIR__ . '/../partials/footer.php';
 ?>

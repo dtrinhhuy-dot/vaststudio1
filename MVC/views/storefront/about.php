@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 $pageTitle = "Về Chúng Tôi — VAST STUDIO | Câu Chuyện Thương Hiệu & Triết Lý Thiết Kế";
 $pageDesc = "Tìm hiểu về thương hiệu thời trang đường phố VAST STUDIO: Triết lý thiết kế tối giản đương đại, kỹ nghệ chất liệu 100% cotton tự nhiên và phom dáng chuẩn Á Đông.";
 $activeNav = "about";
-include __DIR__ . '/includes/header.php';
+include __DIR__ . '/../partials/header.php';
 ?>
 
 <!-- 3. ABOUT CONTENT -->
@@ -131,5 +131,5 @@ include __DIR__ . '/includes/header.php';
     </main>
 
 <?php
-include __DIR__ . '/includes/footer.php';
+include __DIR__ . '/../partials/footer.php';
 ?>

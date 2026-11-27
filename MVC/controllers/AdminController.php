@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/AdminStoreModel.php';
+require_once __DIR__ . '/../models/AdminStoreModel.php';
 
 class AdminController
 {

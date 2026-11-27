@@ -2,7 +2,7 @@
 /**
  * VAST STUDIO - Common Footer & Modals Component
  */
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 ?>
     <!-- FOOTER -->
     <footer class="store-footer">

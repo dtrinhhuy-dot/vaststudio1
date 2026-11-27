@@ -1,6 +1,6 @@
 # VAST STUDIO — THƯƠNG HIỆU THỜI TRANG STREETWEAR & HỆ THỐNG QUẢN TRỊ (CHUẨN KIẾN TRÚC MVC)
 
-Hệ thống website thương mại điện tử **VAST STUDIO** gồm storefront và trang quản trị. Trang quản trị dùng MVC thuần PHP, lưu dữ liệu MySQL và xử lý biểu mẫu bằng request GET/POST; storefront hiện vẫn dùng JavaScript và LocalStorage.
+Hệ thống website thương mại điện tử **VAST STUDIO** gồm storefront và trang quản trị PHP theo MVC. Một front controller trong `MVC/` điều phối các URL, còn giao diện nằm trong `MVC/views`; storefront dùng JavaScript và LocalStorage.
 
 Hệ thống bao gồm đầy đủ **Giao diện Khách hàng (Storefront: Trang chủ, Danh sách sản phẩm, Chi tiết sản phẩm, Tra cứu đơn hàng, Giới thiệu, Liên hệ Showroom, Giỏ hàng, Yêu thích)** và **Giao diện Quản trị (Admin Portal)**.
 
@@ -8,14 +8,14 @@ Hệ thống bao gồm đầy đủ **Giao diện Khách hàng (Storefront: Tran
 
 ## 🌐 CÁC TRANG CHÍNH TRONG HỆ THỐNG
 
-| Trang | File | Mô tả chi tiết |
+| Trang | URL (được MVC router xử lý) | Mô tả chi tiết |
 |---|---|---|
-| **Trang Chủ** | `index.html` | Giao diện thời trang streetwear: Hero section, Phân loại danh mục, BST mùa mới, Top bán chạy, Sản phẩm mới, Lookbook, Đánh giá, Giỏ hàng drawer, Wishlist drawer. |
-| **Trang Danh Sách Sản Phẩm** | `products.html` | Danh mục sản phẩm chuyên sâu: Lọc theo Danh mục, Bộ sưu tập, Kích cỡ (Size), Gam màu, Khoảng giá slider, Sắp xếp (Bán chạy, Mới nhất, Giá tăng/giảm), Đổi chế độ xem (Lưới 4 cột, 3 cột, Danh sách). |
-| **Trang Chi Tiết Sản Phẩm** | `product-detail.html` | Trang chi tiết chuẩn SEO: Gallery ảnh góc chụp, chọn màu/size, thông số kỹ thuật (GSM, cotton dệt thoi), hướng dẫn bảo quản, đánh giá có sao và gợi ý phối đồ (Complete The Look). |
-| **Trang Tra Cứu Đơn Hàng** | `order-tracking.html` | Tra cứu theo Mã đơn (`VAST-xxxx`) hoặc SĐT: Timeline 4 giai đoạn trực quan, chi tiết kiện hàng, thanh toán, hủy đơn khi còn chờ xử lý. |
-| **Trang Giới Thiệu** | `about.html` | Câu chuyện thương hiệu VAST STUDIO, triết lý thiết kế tối giản, 4 trụ cột chất liệu và cột mốc phát triển. |
-| **Trang Liên Hệ & Showroom** | `contact.html` | Địa chỉ 2 showroom Flagship tại Hà Nội & TP.HCM, giờ mở cửa, form liên hệ gửi tin nhắn CSKH trực tuyến. |
+| **Trang Chủ** | `index.php` | Giao diện thời trang streetwear: Hero section, Phân loại danh mục, BST mùa mới, Top bán chạy, Sản phẩm mới, Lookbook, Đánh giá, Giỏ hàng drawer, Wishlist drawer. |
+| **Trang Danh Sách Sản Phẩm** | `products.php` | Danh mục sản phẩm chuyên sâu: Lọc theo Danh mục, Bộ sưu tập, Kích cỡ (Size), Gam màu, Khoảng giá slider, Sắp xếp (Bán chạy, Mới nhất, Giá tăng/giảm), Đổi chế độ xem (Lưới 4 cột, 3 cột, Danh sách). |
+| **Trang Chi Tiết Sản Phẩm** | `product-detail.php` | Trang chi tiết chuẩn SEO: Gallery ảnh góc chụp, chọn màu/size, thông số kỹ thuật (GSM, cotton dệt thoi), hướng dẫn bảo quản, đánh giá có sao và gợi ý phối đồ (Complete The Look). |
+| **Trang Tra Cứu Đơn Hàng** | `order-tracking.php` | Tra cứu theo Mã đơn (`VAST-xxxx`) hoặc SĐT: Timeline 4 giai đoạn trực quan, chi tiết kiện hàng, thanh toán, hủy đơn khi còn chờ xử lý. |
+| **Trang Giới Thiệu** | `about.php` | Câu chuyện thương hiệu VAST STUDIO, triết lý thiết kế tối giản, 4 trụ cột chất liệu và cột mốc phát triển. |
+| **Trang Liên Hệ & Showroom** | `contact.php` | Địa chỉ 2 showroom Flagship tại Hà Nội & TP.HCM, giờ mở cửa, form liên hệ gửi tin nhắn CSKH trực tuyến. |
 | **Trang Quản Trị** | `admin.php` | MVC thuần PHP: Dashboard, CRUD sản phẩm, trạng thái/chi tiết đơn hàng, bộ sưu tập, khách hàng, voucher và cài đặt shop. |
 
 ---
@@ -24,27 +24,38 @@ Hệ thống bao gồm đầy đủ **Giao diện Khách hàng (Storefront: Tran
 
 ```
 d:\vaststudio\
-├── index.html                  # [V] Trang chủ Khách hàng (Storefront Home)
-├── products.html               # [V] Trang danh sách sản phẩm & Bộ lọc (Shop Catalog)
-├── product-detail.html         # [V] Trang chi tiết sản phẩm chuyên sâu (Product Detail)
-├── order-tracking.html         # [V] Trang tra cứu đơn hàng & Timeline vận chuyển
-├── about.html                  # [V] Trang giới thiệu & Câu chuyện thương hiệu
-├── contact.html                # [V] Trang liên hệ & Hệ thống Showroom trực tiếp
-├── admin.html                  # Alias chuyển tiếp đến admin.php
-├── admin.php                   # [C] Điểm vào trang quản trị PHP
-├── views\
-│   └── admin.php               # [V] Giao diện quản trị PHP
+├── .htaccess                   # Rewrite URL tới MVC/router.php trên Apache
+├── MVC\
+│   ├── controllers\
+│   │   ├── FrontController.php # [C] Điều phối các trang
+│   │   ├── AdminPageController.php # [C] Chuẩn bị trang quản trị
+│   │   └── AdminController.php # [C] Xử lý thao tác quản trị
+│   ├── router.php              # Router cho PHP built-in server
+│   ├── models\
+│   │   └── AdminStoreModel.php # [M] Truy vấn dữ liệu quản trị MySQL
+│   └── views\
+│       ├── admin.php           # [V] Giao diện quản trị PHP
+│       ├── admin-login.php     # [V] Giao diện đăng nhập quản trị
+│       ├── admin-error.php     # [V] Lỗi kết nối database
+│       ├── partials\           # [V] Header/footer dùng chung
+│       │   ├── header.php
+│       │   └── footer.php
+│       └── storefront\         # [V] Giao diện các trang cửa hàng
+│           ├── index.php
+│           ├── products.php
+│           ├── product-detail.php
+│           ├── order-tracking.php
+│           ├── about.php
+│           ├── contact.php
+│           ├── auth.php
+│           └── checkout.php
 ├── includes\
-│   ├── AdminController.php     # [C] Điều phối request và thao tác quản trị
-│   ├── AdminStoreModel.php     # [M] Truy vấn dữ liệu quản trị MySQL
+│   ├── config.php              # Cấu hình và helpers
 │   └── database.php            # Kết nối PDO
 ├── database\
 │   ├── schema.sql              # Schema MySQL
 │   ├── setup.php               # Khởi tạo database/schema
 │   └── create-admin.php        # CLI tạo tài khoản role admin
-├── home.html                   # [V] Redirect alias -> index.html
-├── shop.html                   # [V] Redirect alias -> products.html
-│
 ├── css\
 │   ├── styles.css              # Design System, Theme Dark/Light, Tokens toàn cục
 │   └── storefront.css          # Giao diện Trang chủ, PDP, Tracking, Giỏ hàng, Wishlist, Floating widgets
@@ -71,7 +82,7 @@ d:\vaststudio\
 2. **Storefront**:
    - Đơn hàng được tạo kèm mã `VAST-XXXX` (VD: `VAST-9826`).
    - Tồn kho sản phẩm tự động giảm, số lượt bán tự động tăng.
-   - Khách hàng có thể sao chép mã đơn và vào ngay `order-tracking.html` để theo dõi tiến độ giao hàng!
+   - Khách hàng có thể sao chép mã đơn và vào ngay `order-tracking.php` để theo dõi tiến độ giao hàng!
    - Storefront hiện dùng LocalStorage riêng; đồng bộ dữ liệu giữa storefront và MySQL chưa được triển khai.
 3. **Mã giảm giá (Coupons)**:
    - Các mã ưu đãi: `VASTWELCOME` (giảm 100k), `FREESHIP` (freeship 300k), `SUMMER50K` (-50k), `VIPMEMBER` (giảm 15%) áp dụng tức thì tại giỏ hàng.
@@ -91,21 +102,17 @@ npm start
 - Truy cập từ `localhost`/`127.0.0.1` không cần đăng nhập. Khi truy cập từ máy khác, tạo tài khoản quản trị bằng cách cấp `ADMIN_INITIAL_PASSWORD` qua môi trường (tối thiểu 12 ký tự), sau đó chạy `php database/create-admin.php "VAST Admin" admin@example.com`. Tài khoản không có role `admin` không thể vào trang quản trị.
 - Có thể cấu hình kết nối qua `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` (mặc định: `127.0.0.1:3306`, `vaststudio`, `root`, mật khẩu rỗng).
 - **Trang chủ Khách hàng**: [http://localhost:3000](http://localhost:3000)
-- **Trang danh sách sản phẩm**: [http://localhost:3000/products.html](http://localhost:3000/products.html)
-- **Trang chi tiết sản phẩm**: [http://localhost:3000/product-detail.html?id=PRD-001](http://localhost:3000/product-detail.html?id=PRD-001)
-- **Trang tra cứu đơn hàng**: [http://localhost:3000/order-tracking.html](http://localhost:3000/order-tracking.html)
-- **Trang giới thiệu thương hiệu**: [http://localhost:3000/about.html](http://localhost:3000/about.html)
-- **Trang liên hệ & Showroom**: [http://localhost:3000/contact.html](http://localhost:3000/contact.html)
+- **Trang danh sách sản phẩm**: [http://localhost:3000/products.php](http://localhost:3000/products.php)
+- **Trang chi tiết sản phẩm**: [http://localhost:3000/product-detail.php?id=PRD-001](http://localhost:3000/product-detail.php?id=PRD-001)
+- **Trang tra cứu đơn hàng**: [http://localhost:3000/order-tracking.php](http://localhost:3000/order-tracking.php)
+- **Trang giới thiệu thương hiệu**: [http://localhost:3000/about.php](http://localhost:3000/about.php)
+- **Trang liên hệ & Showroom**: [http://localhost:3000/contact.php](http://localhost:3000/contact.php)
 - **Trang quản trị Admin**: [http://localhost:3000/admin.php](http://localhost:3000/admin.php)
 
-### Cách 2: Mở trực tiếp trên Trình duyệt
-- [index.html](file:///d:/vaststudio/index.html) — Trang Chủ
-- [products.html](file:///d:/vaststudio/products.html) — Trang Danh Sách Sản Phẩm
-- [product-detail.html](file:///d:/vaststudio/product-detail.html) — Trang Chi Tiết Sản Phẩm
-- [order-tracking.html](file:///d:/vaststudio/order-tracking.html) — Trang Tra Cứu Đơn Hàng
-- [about.html](file:///d:/vaststudio/about.html) — Trang Giới Thiệu
-- [contact.html](file:///d:/vaststudio/contact.html) — Trang Liên Hệ & Showroom
-- Các trang PHP và cơ sở dữ liệu cần chạy qua máy chủ PHP; không mở `admin.php` bằng `file://`.
+### Cách 2: Chạy bằng Laragon/Apache
+- Đặt dự án trong thư mục web Laragon và bật Apache cùng MySQL.
+- Truy cập `http://localhost/vaststudio/`. File `.htaccess` chuyển URL trang qua `MVC/router.php`.
+- Các URL storefront và admin vẫn dùng dạng `.php`, nhưng được router xử lý; không cần file PHP entrypoint nằm ở thư mục gốc.
 
 ---
 

@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 $pageTitle = "Chi Tiết Sản Phẩm — VAST STUDIO | Modern Streetwear";
 $pageDesc = "VAST STUDIO — Modern Streetwear";
 $activeNav = "products";
-include __DIR__ . '/includes/header.php';
+include __DIR__ . '/../partials/header.php';
 ?>
 
 <!-- 3. MAIN PRODUCT DETAIL CONTENT -->
@@ -231,5 +231,5 @@ include __DIR__ . '/includes/header.php';
     </main>
 
 <?php
-include __DIR__ . '/includes/footer.php';
+include __DIR__ . '/../partials/footer.php';
 ?>

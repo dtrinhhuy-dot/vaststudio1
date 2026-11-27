@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 $pageTitle = "Tài Khoản Thành Viên — VAST STUDIO | Đăng Ký & Đăng Nhập";
 $pageDesc = "Đăng ký và đăng nhập tài khoản thành viên VAST STUDIO. Nhận ngay voucher 100K cho thành viên mới, tích điểm nâng hạng VIP, theo dõi lịch sử đơn hàng và lưu thông tin thanh toán nhanh.";
 $activeNav = "";
-include __DIR__ . '/includes/header.php';
+include __DIR__ . '/../partials/header.php';
 ?>
 
 <!-- 3. AUTH / PROFILE MAIN CONTENT -->
@@ -24,5 +24,5 @@ include __DIR__ . '/includes/header.php';
     </main>
 
 <?php
-include __DIR__ . '/includes/footer.php';
+include __DIR__ . '/../partials/footer.php';
 ?>

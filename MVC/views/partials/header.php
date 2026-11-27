@@ -8,7 +8,7 @@
  * - $extraHead: Optional extra HTML inside <head>
  */
 
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../../../includes/config.php';
 
 $pageTitle = $pageTitle ?? 'VAST STUDIO — Modern Streetwear & Minimalist Fashion';
 $pageDesc = $pageDesc ?? 'VAST STUDIO — Thương hiệu thời trang streetwear tối giản cao cấp chuẩn form Á Đông.';

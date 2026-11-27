@@ -47,17 +47,17 @@
 
             // Detect current page
             const path = window.location.pathname.toLowerCase();
-            if (path.endsWith('products.html') || path.endsWith('products.php') || path.endsWith('shop.html') || path.endsWith('shop.php')) {
+            if (path.endsWith('products.php') || path.endsWith('shop.php')) {
                 this.initShopPage();
-            } else if (path.endsWith('product-detail.html') || path.endsWith('product-detail.php')) {
+            } else if (path.endsWith('product-detail.php')) {
                 this.initProductDetailPage();
-            } else if (path.endsWith('order-tracking.php') || path.endsWith('order-tracking.php')) {
+            } else if (path.endsWith('order-tracking.php')) {
                 this.initOrderTrackingPage();
-            } else if (path.endsWith('checkout.php') || path.endsWith('checkout.php')) {
+            } else if (path.endsWith('checkout.php')) {
                 this.initCheckoutPage();
-            } else if (path.endsWith('auth.html') || path.endsWith('auth.php') || path.endsWith('login.html') || path.endsWith('login.php')) {
+            } else if (path.endsWith('auth.php') || path.endsWith('login.php')) {
                 this.initAuthPage();
-            } else if (path.endsWith('about.html') || path.endsWith('about.php') || path.endsWith('contact.html') || path.endsWith('contact.php')) {
+            } else if (path.endsWith('about.php') || path.endsWith('contact.php')) {
                 // Info pages: general bindings
             } else {
                 this.initHomePage();
@@ -2266,7 +2266,7 @@
                                     <div class="auth-input-group" style="margin-bottom:24px;">
                                         <label style="display:flex; align-items:flex-start; gap:8px; font-size:0.8rem; color:var(--text-secondary); cursor:pointer;">
                                             <input type="checkbox" id="reg-terms" style="margin-top:2px; accent-color:var(--store-gold); cursor:pointer;" required>
-                                            <span>Tôi đồng ý với <a href="about.html" target="_blank" style="color:var(--store-gold); font-weight:600;">Điều khoản thành viên</a> & <a href="about.html" target="_blank" style="color:var(--store-gold); font-weight:600;">Chính sách bảo mật</a> của VAST STUDIO.</span>
+                                            <span>Tôi đồng ý với <a href="about.php" target="_blank" style="color:var(--store-gold); font-weight:600;">Điều khoản thành viên</a> & <a href="about.php" target="_blank" style="color:var(--store-gold); font-weight:600;">Chính sách bảo mật</a> của VAST STUDIO.</span>
                                         </label>
                                     </div>
 
