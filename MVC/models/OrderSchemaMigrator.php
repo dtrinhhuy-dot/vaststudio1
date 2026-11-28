@@ -220,6 +220,36 @@ class OrderSchemaMigrator
         );
         $log[] = 'Ensured notifications table';
 
+        // 8b. Create sepay_transactions table for SePay webhook audit & idempotency
+        $db->exec(
+            "CREATE TABLE IF NOT EXISTS sepay_transactions (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                sepay_id BIGINT NULL,
+                reference_code VARCHAR(120) DEFAULT NULL,
+                gateway VARCHAR(100) NOT NULL DEFAULT '',
+                transaction_date DATETIME DEFAULT NULL,
+                account_number VARCHAR(80) NOT NULL DEFAULT '',
+                sub_account VARCHAR(80) DEFAULT NULL,
+                transfer_type VARCHAR(20) NOT NULL DEFAULT 'in',
+                transfer_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                accumulated DECIMAL(14,2) DEFAULT NULL,
+                code VARCHAR(100) DEFAULT NULL,
+                content TEXT,
+                description TEXT,
+                order_id {$nullableOrderIdType},
+                order_code VARCHAR(50) DEFAULT NULL,
+                match_status VARCHAR(30) NOT NULL DEFAULT 'unmatched',
+                note VARCHAR(500) DEFAULT NULL,
+                raw_payload LONGTEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_sepay_tx_id (sepay_id),
+                KEY idx_sepay_order_code (order_code),
+                KEY idx_sepay_ref (reference_code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+        $log[] = 'Ensured sepay_transactions table';
+
         // 9. Seed product_variants from existing products if a product has no variants yet
         self::seedMissingVariants($db, $legacyProducts, $log);
 

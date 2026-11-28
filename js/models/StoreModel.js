@@ -1119,12 +1119,31 @@
 
         // --- CUSTOMER MODEL & AUTH METHODS ---
         getCustomers() {
-            return JSON.parse(localStorage.getItem(STORAGE_KEYS.CUSTOMERS) || '[]');
+            const customers = JSON.parse(localStorage.getItem(STORAGE_KEYS.CUSTOMERS) || '[]');
+            let removedPasswords = false;
+            const safeCustomers = customers.map(customer => {
+                if (Object.prototype.hasOwnProperty.call(customer, 'password')) {
+                    const safeCustomer = { ...customer };
+                    delete safeCustomer.password;
+                    removedPasswords = true;
+                    return safeCustomer;
+                }
+                return customer;
+            });
+            if (removedPasswords) {
+                localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(safeCustomers));
+            }
+            return safeCustomers;
         }
 
         getCurrentUser() {
             try {
-                return JSON.parse(localStorage.getItem('vast_auth_user') || 'null');
+                const user = JSON.parse(localStorage.getItem('vast_auth_user') || 'null');
+                if (user && Object.prototype.hasOwnProperty.call(user, 'password')) {
+                    delete user.password;
+                    localStorage.setItem('vast_auth_user', JSON.stringify(user));
+                }
+                return user;
             } catch (e) {
                 return null;
             }
@@ -1139,65 +1158,51 @@
             window.dispatchEvent(new CustomEvent('vast:auth-updated', { detail: user }));
         }
 
-        registerCustomer({ name, email, phone, password }) {
-            const customers = this.getCustomers();
-            const cleanEmail = (email || '').trim().toLowerCase();
-            const cleanPhone = (phone || '').replace(/\s+/g, '');
-
-            if (customers.some(c => (c.email || '').toLowerCase() === cleanEmail)) {
-                return { success: false, message: 'Email này đã được sử dụng. Vui lòng chọn đăng nhập!' };
+        async refreshCustomerSession() {
+            const response = await fetch('auth-api.php?action=session', {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin'
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Không thể kiểm tra phiên đăng nhập.');
             }
-            if (customers.some(c => (c.phone || '').replace(/\s+/g, '') === cleanPhone)) {
-                return { success: false, message: 'Số điện thoại này đã được đăng ký tài khoản!' };
+            const container = document.getElementById('auth-main-container');
+            if (container && result.csrf) container.dataset.authCsrf = result.csrf;
+            this.setCurrentUser(result.user || null);
+            return result;
+        }
+
+        async requestCustomerAuth(action, data = {}) {
+            const container = document.getElementById('auth-main-container');
+            const response = await fetch('auth-api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': container?.dataset.authCsrf || '',
+                    Accept: 'application/json'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ ...data, action })
+            });
+            const result = await response.json();
+            if (container && result.csrf) container.dataset.authCsrf = result.csrf;
+            if (response.ok && result.success) {
+                this.setCurrentUser(result.user || null);
             }
+            return result;
+        }
 
-            const newCustomer = {
-                id: 'CUS-' + (Math.floor(100 + Math.random() * 900)),
-                name: name.trim(),
-                email: cleanEmail,
-                phone: cleanPhone,
-                password: password || '123456',
-                city: 'Hà Nội',
-                tier: 'Standard',
-                ordersCount: 0,
-                totalSpent: 0,
-                registeredAt: new Date().toISOString().split('T')[0],
-                avatar: ''
-            };
-
-            customers.unshift(newCustomer);
-            localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
-            this.setCurrentUser(newCustomer);
-            return { success: true, user: newCustomer };
+        registerCustomer(data) {
+            return this.requestCustomerAuth('register', data);
         }
 
         loginCustomer(identifier, password) {
-            const customers = this.getCustomers();
-            const cleanId = (identifier || '').trim().toLowerCase();
-            const cleanPhone = (identifier || '').replace(/\s+/g, '');
-
-            const user = customers.find(c => 
-                (c.email && c.email.toLowerCase() === cleanId) || 
-                (c.phone && c.phone.replace(/\s+/g, '') === cleanPhone)
-            );
-
-            if (!user) {
-                return { success: false, message: 'Tài khoản không tồn tại trên hệ thống VAST STUDIO!' };
-            }
-
-            // Default seed customer password: 123456
-            const validPassword = user.password || '123456';
-            if (password !== validPassword) {
-                return { success: false, message: 'Mật khẩu không chính xác. Mật khẩu mặc định tài khoản mẫu là 123456' };
-            }
-
-            this.setCurrentUser(user);
-            return { success: true, user };
+            return this.requestCustomerAuth('login', { identifier, password });
         }
 
         logoutCustomer() {
-            this.setCurrentUser(null);
-            return { success: true };
+            return this.requestCustomerAuth('logout');
         }
 
         updateCustomerProfile(id, updatedData) {

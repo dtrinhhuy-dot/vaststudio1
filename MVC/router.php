@@ -22,7 +22,7 @@ if (preg_match('#^/MVC(?:/|$)#i', $relativePath)) {
 }
 
 if (PHP_SAPI === 'cli-server' && $relativePath !== '/') {
-    $routedPaths = '#^/(?:index|products|product-detail|order-tracking|about|contact|auth|login|register|checkout|admin|api|home|shop)\.php$#i';
+    $routedPaths = '#^/(?:index|products|product-detail|order-tracking|about|contact|auth|auth-api|login|register|checkout|admin|api|sepay-webhook|home|shop)\.php$#i';
     if (!preg_match($routedPaths, $relativePath)) {
         $documentRoot = realpath(dirname(__DIR__));
         $requestedFile = realpath(

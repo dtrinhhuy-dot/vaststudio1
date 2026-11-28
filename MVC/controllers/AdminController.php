@@ -2,16 +2,20 @@
 
 require_once __DIR__ . '/../models/AdminStoreModel.php';
 require_once __DIR__ . '/../models/OrderService.php';
+require_once __DIR__ . '/../models/SepayService.php';
 
 class AdminController
 {
     private AdminStoreModel $model;
     private OrderService $orderService;
+    private SepayService $sepayService;
 
-    public function __construct(AdminStoreModel $model, ?OrderService $orderService = null)
+    public function __construct(AdminStoreModel $model, ?OrderService $orderService = null, ?SepayService $sepayService = null)
     {
+        $db = getDatabaseConnection();
         $this->model = $model;
-        $this->orderService = $orderService ?? new OrderService(getDatabaseConnection());
+        $this->orderService = $orderService ?? new OrderService($db);
+        $this->sepayService = $sepayService ?? new SepayService($db);
     }
 
     public function handleRequest(): array
@@ -47,7 +51,7 @@ class AdminController
         }
 
         $tab = $_GET['tab'] ?? 'dashboard';
-        $tabs = ['dashboard', 'products', 'orders', 'returns', 'collections', 'customers', 'coupons', 'emails', 'settings'];
+        $tabs = ['dashboard', 'products', 'orders', 'returns', 'sepay', 'collections', 'customers', 'coupons', 'emails', 'settings'];
         if (!in_array($tab, $tabs, true)) {
             $tab = 'dashboard';
         }
@@ -68,6 +72,7 @@ class AdminController
         ];
         $returnFilter = (string)($_GET['return_status'] ?? 'all');
         $emailFilter = (string)($_GET['email_status'] ?? 'all');
+        $sepayFilter = (string)($_GET['sepay_status'] ?? 'all');
         $revenueRange = ($_GET['range'] ?? '7') === '30' ? 30 : 7;
 
         $mailer = new Mailer(getDatabaseConnection());
@@ -87,6 +92,7 @@ class AdminController
             'customerFilters' => $customerFilters,
             'returnFilter' => $returnFilter,
             'emailFilter' => $emailFilter,
+            'sepayFilter' => $sepayFilter,
             'stats' => $this->model->getDashboardStats(),
             'revenueRange' => $revenueRange,
             'revenueHistory' => $this->model->getRevenueHistory($revenueRange),
@@ -97,6 +103,10 @@ class AdminController
             'selectedOrder' => isset($_GET['order']) ? $this->model->getOrder((string)$_GET['order']) : null,
             'returnRequests' => $this->orderService->getReturnRequests($returnFilter),
             'selectedReturn' => isset($_GET['return']) ? $this->orderService->getReturnRequestByCode((string)$_GET['return']) : null,
+            'sepayTransactions' => $this->sepayService->getTransactions($sepayFilter, 80),
+            'sepayConfig' => $this->sepayService->getConfig(),
+            'sepayBanks' => SepayService::supportedBanks(),
+            'sepayApiAccounts' => in_array($tab, ['sepay', 'settings'], true) ? $this->sepayService->getBankAccountsFromApi() : null,
             'emailLogs' => $this->orderService->getEmailLogs($emailFilter, 80),
             'smtpConfigured' => $mailer->isConfigured(),
             'adminNotifications' => $this->orderService->getNotifications('admin', null, 12),
@@ -278,16 +288,75 @@ class AdminController
                 $this->redirect('coupons', 'Đã xóa mã giảm giá.');
                 break;
 
+            case 'sepay_simulate':
+                $orderCode = trim((string)($_POST['order_code'] ?? ''));
+                $customAmt = trim((string)($_POST['amount'] ?? ''));
+                $amountOverride = ($customAmt !== '' && is_numeric($customAmt)) ? (float)$customAmt : null;
+                $res = $this->sepayService->simulateWebhookForOrder($orderCode, $amountOverride);
+                $returnTo = (string)($_POST['return_tab'] ?? 'sepay');
+                $dest = $returnTo === 'orders'
+                    ? 'admin.php?tab=orders&order=' . rawurlencode($orderCode)
+                    : 'admin.php?tab=sepay';
+                $this->redirectUrl($dest, 'SePay giả lập: ' . ($res['message'] ?? 'Đã xử lý webhook.'));
+                break;
+
+            case 'sepay_sync_now':
+                $accRes = $this->sepayService->getBankAccountsFromApi(true);
+                $txRes = $this->sepayService->syncRecentTransactionsFromApi(30, true);
+                $autoFilledMsg = '';
+                if (!empty($accRes['ok']) && !empty($accRes['accounts'][0])) {
+                    $firstAcc = $accRes['accounts'][0];
+                    $curSettings = $this->model->getSettings();
+                    $curClean = preg_replace('/\s+/', '', (string)($curSettings['bankAccount'] ?? ''));
+                    if (($curClean === '' || $curClean === '998877665500') && !empty($firstAcc['accountNumber'])) {
+                        $curSettings['bankAccount'] = $firstAcc['accountNumber'];
+                        if (!empty($firstAcc['bankCode'])) {
+                            $curSettings['sepayBankCode'] = $firstAcc['bankCode'];
+                        }
+                        if (!empty($firstAcc['bankFullName'])) {
+                            $curSettings['bankName'] = $firstAcc['bankFullName'];
+                        }
+                        if (!empty($firstAcc['accountHolder'])) {
+                            $curSettings['bankOwner'] = $firstAcc['accountHolder'];
+                        }
+                        $this->model->saveSettings($curSettings);
+                        $autoFilledMsg = ' Tự động cập nhật STK ' . $firstAcc['accountNumber'] . ' (' . ($firstAcc['bankCode'] ?: 'Bank') . ').';
+                    }
+                }
+                if (empty($accRes['ok'])) {
+                    $this->redirectUrl('admin.php?tab=sepay', 'Lỗi kết nối SePay API: ' . ($accRes['error'] ?? 'Không xác định'));
+                }
+                $accCount = count($accRes['accounts'] ?? []);
+                $txChecked = (int)($txRes['checked'] ?? 0);
+                $txMatched = count($txRes['matched'] ?? []);
+                $this->redirect('sepay', "Đã đồng bộ SePay API (HTTP 200): {$accCount} tài khoản ngân hàng liên kết, kiểm tra {$txChecked} giao dịch mới ({$txMatched} khớp đơn).{$autoFilledMsg}");
+                break;
+
             case 'settings_save':
                 $settings = $this->model->getSettings();
                 foreach ([
                     'storeName', 'tagline', 'hotline', 'email', 'addressHanoi', 'addressHcm',
                     'freeShippingThreshold', 'defaultShippingFee', 'bankName', 'bankAccount', 'bankOwner',
+                    'sepayBankCode', 'sepayPrefix', 'sepayCompanyUrl',
                 ] as $key) {
                     $settings[$key] = trim((string)($_POST[$key] ?? ''));
                 }
+                $settings['sepayEnabled'] = !empty($_POST['sepayEnabled']);
+                $settings['sepayRequireAuth'] = !empty($_POST['sepayRequireAuth']);
+                $newToken = trim((string)($_POST['sepayWebhookToken'] ?? ''));
+                if ($newToken !== '') {
+                    $settings['sepayWebhookToken'] = $newToken;
+                } elseif (!empty($_POST['clearSepayWebhookToken'])) {
+                    $settings['sepayWebhookToken'] = '';
+                }
+                $newApiToken = trim((string)($_POST['sepayApiToken'] ?? ''));
+                if ($newApiToken !== '') {
+                    $settings['sepayApiToken'] = $newApiToken;
+                } elseif (!empty($_POST['clearSepayApiToken'])) {
+                    $settings['sepayApiToken'] = '';
+                }
                 $this->model->saveSettings($settings);
-                $this->redirect('settings', 'Đã lưu cài đặt cửa hàng.');
+                $this->redirect('settings', 'Đã lưu cài đặt cửa hàng & cấu hình SePay.');
                 break;
 
             case 'theme':
@@ -330,6 +399,7 @@ class AdminController
             'products' => 'Quản lý Sản phẩm',
             'orders' => 'Quản lý Đơn hàng',
             'returns' => 'Quản lý Đổi Trả & Hoàn Tiền',
+            'sepay' => 'Giao dịch & Webhook SePay',
             'collections' => 'Bộ sưu tập thời trang',
             'customers' => 'Danh sách Khách hàng',
             'coupons' => 'Mã Giảm Giá & Khuyến Mãi',

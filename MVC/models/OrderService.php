@@ -40,7 +40,7 @@ class OrderService
 
             $variants = $variantsByProduct[$pid] ?? [];
             $totalVariantStock = $variants
-                ? array_sum(array_map(static fn (array $v): int => (int)$v['stock_quantity'], $variants))
+                ? array_sum(array_map(static fn (array $v): int => (int)($v['stock'] ?? $v['stock_quantity'] ?? 0), $variants))
                 : (int)$row['stock_quantity'];
 
             $products[] = [
@@ -90,6 +90,14 @@ class OrderService
         unset($cp);
 
         $settings = $this->loadSettings();
+        unset($settings['sepayWebhookToken'], $settings['sepayApiToken'], $settings['sepayRequireAuth']);
+        require_once __DIR__ . '/SepayService.php';
+        $sepayPublic = (new SepayService($this->db))->getPublicConfig();
+        $settings['sepay'] = $sepayPublic;
+        $settings['bankCode'] = $sepayPublic['bankCode'];
+        $settings['bankName'] = $sepayPublic['bankName'];
+        $settings['bankAccount'] = $sepayPublic['bankAccount'];
+        $settings['bankOwner'] = $sepayPublic['bankOwner'];
 
         return [
             'products' => $products,
@@ -209,6 +217,9 @@ class OrderService
     {
         $name = trim((string)($input['customerName'] ?? ''));
         $phone = preg_replace('/[^0-9]/', '', (string)($input['customerPhone'] ?? '')) ?? '';
+        if (str_starts_with($phone, '84') && strlen($phone) >= 11) {
+            $phone = '0' . substr($phone, 2);
+        }
         $email = strtolower(trim((string)($input['customerEmail'] ?? '')));
         $shippingAddress = trim((string)($input['shippingAddress'] ?? ''));
         $shippingMethod = trim((string)($input['shippingMethod'] ?? 'Giao Tiêu Chuẩn (2-3 ngày)'));
@@ -439,7 +450,9 @@ class OrderService
                     COALESCE(NULLIF(o.customer_phone, ''), u.phone, '') AS resolved_customer_phone,
                     COALESCE(NULLIF(o.customer_email, ''), u.email, '') AS resolved_customer_email,
                     (SELECT pm.name FROM payments p JOIN payment_methods pm ON pm.id = p.payment_method_id WHERE p.order_id = o.id ORDER BY p.id DESC LIMIT 1) AS payment_method,
-                    COALESCE((SELECT p.status FROM payments p WHERE p.order_id = o.id ORDER BY p.id DESC LIMIT 1), 'pending') AS payment_status
+                    COALESCE((SELECT p.status FROM payments p WHERE p.order_id = o.id ORDER BY p.id DESC LIMIT 1), 'pending') AS payment_status,
+                    (SELECT p.transaction_code FROM payments p WHERE p.order_id = o.id ORDER BY p.id DESC LIMIT 1) AS payment_transaction_code,
+                    (SELECT p.updated_at FROM payments p WHERE p.order_id = o.id ORDER BY p.id DESC LIMIT 1) AS payment_updated_at
              FROM orders o
              LEFT JOIN users u ON u.id = o.user_id
              WHERE o.order_code = :code OR o.id = :num_id
@@ -542,6 +555,8 @@ class OrderService
             'refunded_amount' => (float)($row['refunded_amount'] ?? 0),
             'payment_method' => (string)($row['payment_method'] ?? 'COD'),
             'payment_status' => (string)($row['payment_status'] ?? 'pending'),
+            'payment_transaction_code' => $row['payment_transaction_code'] ?? null,
+            'payment_updated_at' => $row['payment_updated_at'] ?? null,
             'order_status' => (string)$row['current_status'],
             'note' => (string)($row['note'] ?? ''),
             'stock_deducted' => (int)($row['stock_deducted'] ?? 0),
@@ -1984,14 +1999,39 @@ class OrderService
         return $map;
     }
 
-    private function loadSettings(): array
+    public static function readMergedSettings(PDO $db): array
     {
         $settings = [];
-        foreach ($this->db->query('SELECT setting_key, setting_value FROM store_settings') as $row) {
-            $decoded = json_decode((string)$row['setting_value'], true);
-            $settings[$row['setting_key']] = json_last_error() === JSON_ERROR_NONE ? $decoded : $row['setting_value'];
+        try {
+            $hasLegacy = (bool)$db->query("SHOW TABLES LIKE 'store_settings'")->fetchColumn();
+            if ($hasLegacy) {
+                foreach ($db->query('SELECT setting_key, setting_value FROM store_settings') as $row) {
+                    $decoded = json_decode((string)$row['setting_value'], true);
+                    $settings[$row['setting_key']] = json_last_error() === JSON_ERROR_NONE ? $decoded : $row['setting_value'];
+                }
+            }
+        } catch (Throwable $e) {
         }
+
+        try {
+            $stmt = $db->prepare("SELECT setting_value FROM settings WHERE setting_key = 'storefront' LIMIT 1");
+            $stmt->execute();
+            $val = $stmt->fetchColumn();
+            if ($val !== false) {
+                $decoded = json_decode((string)$val, true);
+                if (is_array($decoded)) {
+                    $settings = array_merge($settings, $decoded);
+                }
+            }
+        } catch (Throwable $e) {
+        }
+
         return $settings;
+    }
+
+    private function loadSettings(): array
+    {
+        return self::readMergedSettings($this->db);
     }
 
     // =========================================================================

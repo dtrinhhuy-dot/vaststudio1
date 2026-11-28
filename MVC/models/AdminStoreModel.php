@@ -415,24 +415,8 @@ class AdminStoreModel
 
     public function getSettings(): array
     {
-        $statement = $this->db->prepare("SELECT setting_value FROM settings WHERE setting_key = 'storefront'");
-        $statement->execute();
-        $value = $statement->fetchColumn();
-        if ($value === false) {
-            if ($this->legacySchema) {
-                $settings = [];
-                foreach ($this->db->query('SELECT setting_key, setting_value FROM store_settings') as $row) {
-                    $decoded = json_decode((string)$row['setting_value'], true);
-                    $settings[$row['setting_key']] = json_last_error() === JSON_ERROR_NONE
-                        ? $decoded
-                        : $row['setting_value'];
-                }
-                return $settings;
-            }
-            return [];
-        }
-        $settings = json_decode($value, true);
-        return is_array($settings) ? $settings : [];
+        require_once __DIR__ . '/OrderService.php';
+        return OrderService::readMergedSettings($this->db);
     }
 
     public function saveSettings(array $settings): void

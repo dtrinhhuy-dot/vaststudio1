@@ -35,7 +35,8 @@
             pdpProduct: null,
             pdpSelectedSize: null,
             pdpSelectedColor: null,
-            pdpQty: 1
+            pdpQty: 1,
+            sepayPollTimer: null
         },
 
         // --- INIT STOREFRONT ---
@@ -172,7 +173,11 @@
             const user = window.StoreModel.getCurrentUser();
             if (user) {
                 const initial = (user.name || 'U').trim().charAt(0).toUpperCase();
-                authBtn.innerHTML = `<span class="header-user-avatar" title="${user.name} (${user.tier || 'Thành viên'})">${initial}</span>`;
+                const avatar = document.createElement('span');
+                avatar.className = 'header-user-avatar';
+                avatar.title = `${user.name} (${user.tier || 'Thành viên'})`;
+                avatar.textContent = initial;
+                authBtn.replaceChildren(avatar);
             } else {
                 authBtn.innerHTML = window.ICONS?.user || `<span data-icon="user"></span>`;
             }
@@ -181,6 +186,16 @@
         // --- HELPER: FORMAT CURRENCY ---
         formatMoney(num) {
             return (num || 0).toLocaleString('vi-VN') + ' ₫';
+        },
+
+        escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
         },
 
         // --- HELPER: TOAST NOTIFICATION ---
@@ -1275,7 +1290,106 @@
                                     <span style="color:var(--store-gold);">${this.formatMoney(order.total)}</span>
                                 </div>
                                 <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
-                                    Hình thức: <strong>${order.paymentMethod}</strong> (${order.paymentStatus})
+                                    Hình thức: <strong>${order.paymentMethod}</strong> (${order.paymentStatus === 'paid' ? '<strong style="color:#10b981">Đã thanh toán</strong>' : (order.paymentStatus || 'pending')})${order.transactionCode ? ` • Mã GD: <code>${order.transactionCode}</code>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${(order.paymentStatus !== 'paid' && order.orderStatus !== 'cancelled' && !(order.paymentMethod || '').toLowerCase().includes('cod') && order.sepay) ? this.renderSepayCardHtml(order, order.sepay, 'margin:0 32px 24px;') : ''}
+                </div>
+            `;
+            if (order.paymentStatus !== 'paid' && order.orderStatus !== 'cancelled' && !(order.paymentMethod || '').toLowerCase().includes('cod')) {
+                this.startSepayPaymentPolling(order.id);
+            }
+        },
+
+        isOnlinePaymentOrder(order) {
+            const pm = (order && order.paymentMethod ? String(order.paymentMethod) : '').toLowerCase();
+            return !pm.includes('cod');
+        },
+
+        buildFallbackSepayData(order) {
+            const storeSettings = window.StoreModel?.getSettings() || {};
+            const sepayCfg = storeSettings.sepay || {};
+            const fallbackBankCode = sepayCfg.bankCode || 'Vietcombank';
+            const fallbackAcc = (sepayCfg.bankAccountClean || storeSettings.bankAccount || '998877665500').replace(/\s+/g, '');
+            const fallbackOwner = sepayCfg.bankOwner || storeSettings.bankOwner || 'CONG TY TNHH VAST STUDIO VIETNAM';
+            const normCode = String(order.id || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+            return order.sepay || {
+                qrUrl: `https://qr.sepay.vn/img?acc=${encodeURIComponent(fallbackAcc)}&bank=${encodeURIComponent(fallbackBankCode)}&amount=${Math.round(order.total || 0)}&des=${encodeURIComponent(normCode)}&template=compact`,
+                fallbackQrUrl: `https://img.vietqr.io/image/${encodeURIComponent(fallbackBankCode.toLowerCase())}-${encodeURIComponent(fallbackAcc)}-compact2.png?amount=${Math.round(order.total || 0)}&addInfo=${encodeURIComponent(normCode)}&accountName=${encodeURIComponent(fallbackOwner)}`,
+                bankName: sepayCfg.bankName || storeSettings.bankName || fallbackBankCode,
+                bankAccount: sepayCfg.bankAccount || storeSettings.bankAccount || fallbackAcc,
+                bankAccountClean: fallbackAcc,
+                bankOwner: fallbackOwner,
+                transferContent: normCode,
+                isDemoAccount: !fallbackAcc || fallbackAcc === '998877665500',
+                webhookConfigured: !!sepayCfg.webhookConfigured,
+                apiSyncConfigured: !!sepayCfg.apiSyncConfigured,
+                canLocalSimulate: !!sepayCfg.canLocalSimulate
+            };
+        },
+
+        renderSepayCardHtml(order, sepayData, inlineStyle = '') {
+            const isPaid = order.paymentStatus === 'paid';
+            const hasLiveSePay = !!(sepayData.apiSyncConfigured || sepayData.webhookConfigured) && !sepayData.isDemoAccount;
+            const liveActions = `
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <button type="button" class="coupon-pill-btn" onclick="Storefront.checkSepayPaymentStatus('${order.id}', true)">Kiểm tra ngay</button>
+                    ${sepayData.canLocalSimulate ? `<button type="button" class="coupon-pill-btn" style="background:#10b981;color:#fff;border-color:#10b981;" onclick="Storefront.triggerLocalSepayTestPay('${order.id}', this)">Test xác nhận đã thu tiền</button>` : ''}
+                    ${!hasLiveSePay ? `<a href="admin.php?tab=settings" target="_blank" class="coupon-pill-btn" style="text-decoration:none;">Gắn STK &amp; Token SePay</a>` : ''}
+                </div>
+            `;
+            const statusBanner = isPaid
+                ? `<span>✓ ĐÃ THANH TOÁN THÀNH CÔNG QUA SEPAY${order.transactionCode ? ' · Mã GD: ' + order.transactionCode : ''}</span>`
+                : (hasLiveSePay
+                    ? `<span>⏳ Đang chờ SePay xác nhận tự động (kiểm tra mỗi 3 giây)...</span>${liveActions}`
+                    : `<span>⚠️ Chế độ Demo (${sepayData.isDemoAccount ? 'STK mẫu ' + sepayData.bankAccount : 'chưa gắn API Token/Webhook SePay'}). Hãy gắn STK &amp; API Token thật hoặc bấm Test:</span>${liveActions}`);
+
+            return `
+                <div class="vietqr-card" id="sepay-payment-card" ${inlineStyle ? `style="${inlineStyle}"` : ''}>
+                    <div class="vietqr-image-wrap">
+                        <img src="${sepayData.qrUrl}" onerror="this.onerror=null;this.src='${sepayData.fallbackQrUrl}';" alt="SePay VietQR ${order.id}">
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
+                            Quét bằng app ngân hàng / MoMo (SePay VietQR)
+                        </div>
+                    </div>
+                    <div>
+                        <div class="sepay-status-banner ${isPaid ? 'is-paid' : 'is-waiting'}" id="sepay-live-status">
+                            ${statusBanner}
+                        </div>
+                        <h3 style="font-family:var(--store-font-heading); margin:0 0 8px; font-size:1.15rem; color:var(--text-primary);">
+                            Thanh Toán Chuyển Khoản Tự Động SePay
+                        </h3>
+                        <p style="font-size:0.85rem; color:var(--text-secondary); margin:0 0 14px;">
+                            Mở ứng dụng ngân hàng, chọn <strong>Quét mã QR</strong> — số tiền và nội dung chuyển khoản sẽ tự động điền chuẩn xác.
+                        </p>
+                        <div class="bank-info-grid">
+                            <div class="bank-info-row">
+                                <span style="color:var(--text-muted);">Ngân hàng:</span>
+                                <strong>${sepayData.bankName}</strong>
+                            </div>
+                            <div class="bank-info-row">
+                                <span style="color:var(--text-muted);">Số tài khoản:</span>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <strong style="font-family:monospace; color:var(--store-gold); font-size:1.05rem;">${sepayData.bankAccount}</strong>
+                                    <button type="button" class="coupon-pill-btn" style="padding:2px 6px;" onclick="Storefront.copyToClipboard('${sepayData.bankAccountClean}', 'Đã chép số tài khoản!')">Chép STK</button>
+                                </div>
+                            </div>
+                            <div class="bank-info-row">
+                                <span style="color:var(--text-muted);">Chủ tài khoản:</span>
+                                <strong>${sepayData.bankOwner}</strong>
+                            </div>
+                            <div class="bank-info-row">
+                                <span style="color:var(--text-muted);">Số tiền chuyển:</span>
+                                <strong style="font-family:var(--store-font-heading); color:var(--store-gold); font-size:1.1rem;">${this.formatMoney(order.total)}</strong>
+                            </div>
+                            <div class="bank-info-row">
+                                <span style="color:var(--text-muted);">Nội dung chuyển (bắt buộc):</span>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <strong style="font-family:monospace; color:var(--store-gold); font-size:0.98rem;">${sepayData.transferContent}</strong>
+                                    <button type="button" class="coupon-pill-btn" style="padding:2px 6px;" onclick="Storefront.copyToClipboard('${sepayData.transferContent}', 'Đã chép nội dung chuyển tiền!')">Chép ND</button>
                                 </div>
                             </div>
                         </div>
@@ -1300,10 +1414,24 @@
         // ======================================================================
         // TRANG THANH TOÁN (CHECKOUT PAGE LOGIC)
         // ======================================================================
-        initCheckoutPage() {
+        async initCheckoutPage() {
             const container = document.getElementById('checkout-main-content');
             if (!container) return;
             if (!window.StoreModel) return;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const activeOrderCode = urlParams.get('order');
+            if (activeOrderCode) {
+                container.innerHTML = `<div class="checkout-empty-box"><p style="color:var(--text-muted);margin:0;">Đang tải thông tin thanh toán đơn #${activeOrderCode}...</p></div>`;
+                try {
+                    const res = await fetch(`api.php?action=order_track&q=${encodeURIComponent(activeOrderCode)}`);
+                    const payload = await res.json();
+                    if (payload && payload.ok && payload.order) {
+                        this.renderCheckoutSuccess(payload.order, payload.order.shippingAddress || '');
+                        return;
+                    }
+                } catch (err) {}
+            }
 
             // Default checkout state
             if (!this.state.checkoutShipping) this.state.checkoutShipping = 'standard';
@@ -1332,6 +1460,17 @@
                     savedCustomer = JSON.parse(localStorage.getItem('vast_customer_info') || '{}');
                 } catch (err) {}
             }
+
+            const storeSettings = window.StoreModel.getSettings() || {};
+            const sepayCfg = storeSettings.sepay || {};
+            const checkoutBankName = sepayCfg.bankName || storeSettings.bankName || 'Vietcombank';
+            const checkoutBankAcc = sepayCfg.bankAccount || storeSettings.bankAccount || 'Chưa cấu hình STK';
+            const checkoutBankOwner = sepayCfg.bankOwner || storeSettings.bankOwner || 'CONG TY TNHH VAST STUDIO VIETNAM';
+            const checkoutCoupons = (window.StoreModel.getCoupons() || []).filter(c => c.status === 'active').slice(0, 4);
+            const couponSuggestionsHtml = checkoutCoupons.map(c => {
+                const desc = c.type === 'percent' ? `-${c.value}%` : `-${this.formatMoney(c.value)}`;
+                return `<button type="button" class="coupon-pill-btn" title="${c.description || ''}" onclick="Storefront.applySuggestedCoupon('${c.code}')">${c.code} (${desc})</button>`;
+            }).join('');
 
             // 3. Render 2-column checkout layout
             container.innerHTML = `
@@ -1461,18 +1600,18 @@
                                            ${this.state.checkoutPayment === 'QR' ? 'checked' : ''}>
                                     <div class="method-choice-content">
                                         <div class="method-choice-title">
-                                            <span>Chuyển khoản QR Ngân hàng (VietQR)</span>
+                                            <span>Chuyển khoản QR Ngân hàng (SePay VietQR)</span>
                                             <span class="method-badge-rec">Khuyên Dùng</span>
                                         </div>
                                         <p class="method-choice-desc">
-                                            Quét mã VietQR tự động qua app bất kỳ ngân hàng nào (Vietcombank, MB, Techcombank, ACB...). Hệ thống tự xác nhận đơn tức thì.
+                                            Quét mã VietQR tự động qua app bất kỳ ngân hàng nào. Hệ thống SePay đối soát biến động số dư và tự xác nhận đơn ngay khi nhận được chuyển khoản.
                                         </p>
                                         <div class="payment-details-panel">
-                                            <strong>Thông tin thụ hưởng chính thức VAST STUDIO:</strong><br>
-                                            • Ngân hàng: <strong>Vietcombank</strong> (Ngoại thương VN)<br>
-                                            • Số tài khoản: <strong style="font-family:monospace; color:var(--store-gold); font-size:0.95rem;">9988 7766 5500</strong><br>
-                                            • Chủ tài khoản: <strong>CONG TY TNHH VAST STUDIO VIETNAM</strong><br>
-                                            <em>(Mã QR chuyển tiền tự động kèm nội dung chính xác sẽ hiển thị ngay sau khi bấm Xác Nhận Đặt Hàng)</em>
+                                            <strong>Thông tin thụ hưởng SePay VAST STUDIO:</strong><br>
+                                            • Ngân hàng: <strong>${checkoutBankName}</strong><br>
+                                            • Số tài khoản: <strong style="font-family:monospace; color:var(--store-gold); font-size:0.95rem;">${checkoutBankAcc}</strong><br>
+                                            • Chủ tài khoản: <strong>${checkoutBankOwner}</strong><br>
+                                            <em>(Mã QR chuyển tiền SePay tự động kèm nội dung chính xác sẽ hiển thị ngay sau khi bấm Xác Nhận Đặt Hàng)</em>
                                         </div>
                                     </div>
                                 </label>
@@ -1582,12 +1721,7 @@
 
                                 <div class="coupon-suggestions">
                                     <span style="color:var(--text-muted);">Gợi ý mã:</span>
-                                    <button type="button" class="coupon-pill-btn" onclick="Storefront.applySuggestedCoupon('VASTWELCOME')">
-                                        VASTWELCOME (-100K)
-                                    </button>
-                                    <button type="button" class="coupon-pill-btn" onclick="Storefront.applySuggestedCoupon('VAST50')">
-                                        VAST50 (-50K)
-                                    </button>
+                                    ${couponSuggestionsHtml || '<span style="color:var(--text-muted);font-size:0.78rem;">Nhập mã ưu đãi nếu có</span>'}
                                 </div>
                             </div>
 
@@ -1668,7 +1802,9 @@
             if (!window.StoreModel) return;
             const cart = window.StoreModel.getCart();
             const subtotal = window.StoreModel.getCartSubtotal();
-            const freeShipThreshold = 500000;
+            const settings = window.StoreModel.getSettings() || {};
+            const freeShipThreshold = Number(settings.freeShippingThreshold ?? 500000);
+            const stdShipFee = Number(settings.defaultShippingFee ?? 30000);
 
             // 1. Calculate shipping fee
             let shippingFee = 0;
@@ -1676,7 +1812,7 @@
                 shippingFee = 50000;
             } else {
                 // standard
-                shippingFee = (subtotal >= freeShipThreshold || subtotal === 0) ? 0 : 30000;
+                shippingFee = (subtotal >= freeShipThreshold || subtotal === 0) ? 0 : stdShipFee;
             }
 
             // 2. Calculate coupon discount
@@ -1705,11 +1841,11 @@
                             <div class="method-choice-title">
                                 <span>Giao hàng Tiêu Chuẩn (2 - 3 ngày)</span>
                                 <div>
-                                    ${isFree ? `<span class="method-badge-free">FREESHIP</span>` : `<span style="font-weight:700;">30.000 ₫</span>`}
+                                    ${isFree ? `<span class="method-badge-free">FREESHIP</span>` : `<span style="font-weight:700;">${this.formatMoney(stdShipFee)}</span>`}
                                 </div>
                             </div>
                             <p class="method-choice-desc">
-                                ${isFree ? 'Đơn hàng từ 500.000₫ đủ điều kiện Miễn phí vận chuyển toàn quốc.' : 'Miễn phí cho đơn từ 500.000₫ (mua thêm để được freeship).'}
+                                ${isFree ? `Đơn hàng từ ${this.formatMoney(freeShipThreshold)} đủ điều kiện Miễn phí vận chuyển toàn quốc.` : `Miễn phí cho đơn từ ${this.formatMoney(freeShipThreshold)} (mua thêm để được freeship).`}
                             </p>
                         </div>
                     </label>
@@ -1909,7 +2045,10 @@
                 return;
             }
 
-            const cleanPhone = phone.replace(/[\s.-]/g, '');
+            let cleanPhone = phone.replace(/[^0-9]/g, '');
+            if (cleanPhone.startsWith('84') && cleanPhone.length >= 11) {
+                cleanPhone = '0' + cleanPhone.slice(2);
+            }
             if (!/^0[0-9]{9,10}$/.test(cleanPhone)) {
                 this.showToast('Số điện thoại không hợp lệ (cần 10–11 chữ số bắt đầu bằng 0)!', 'error');
                 document.getElementById('checkout-phone')?.focus();
@@ -1999,9 +2138,16 @@
                 stepSuccess.classList.add('active');
             }
 
-            const isQR = (order.paymentMethod || '').includes('QR');
-            // Dynamic VietQR generator URL
-            const vietqrUrl = `https://img.vietqr.io/image/vietcombank-998877665500-compact2.png?amount=${order.total}&addInfo=${encodeURIComponent(order.id + ' ' + order.customerPhone)}&accountName=CONG%20TY%20TNHH%20VAST%20STUDIO%20VIETNAM`;
+            if (window.history && window.history.replaceState) {
+                try {
+                    const nextUrl = `checkout.php?order=${encodeURIComponent(order.id)}`;
+                    window.history.replaceState(null, '', nextUrl);
+                } catch (err) {}
+            }
+
+            const isOnlinePay = this.isOnlinePaymentOrder(order);
+            const sepayData = this.buildFallbackSepayData(order);
+            const isPaid = order.paymentStatus === 'paid';
 
             container.innerHTML = `
                 <div class="order-success-screen">
@@ -2011,7 +2157,7 @@
                         ĐẶT HÀNG THÀNH CÔNG!
                     </h1>
                     <p style="color:var(--text-secondary); margin:0 auto 16px; font-size:0.95rem; max-width:540px;">
-                        Đơn hàng của bạn đã được tiếp nhận vào hệ thống quản lý VAST STUDIO. Đội ngũ CSKH sẽ liên hệ xác nhận và tiến hành đóng gói ngay.
+                        Đơn hàng của bạn đã được tiếp nhận vào hệ thống VAST STUDIO. ${isOnlinePay ? 'Quét mã QR SePay bên dưới để hệ thống tự động xác nhận thanh toán tức thì.' : 'Đội ngũ CSKH sẽ liên hệ xác nhận và tiến hành đóng gói ngay.'}
                     </p>
 
                     <div>
@@ -2024,53 +2170,7 @@
                         </div>
                     </div>
 
-                    ${isQR ? `
-                        <!-- VIETQR AUTOMATIC PAYMENT CARD -->
-                        <div class="vietqr-card">
-                            <div class="vietqr-image-wrap">
-                                <img src="${vietqrUrl}" alt="VietQR VAST STUDIO">
-                                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
-                                    Quét bằng app ngân hàng bất kỳ
-                                </div>
-                            </div>
-                            <div>
-                                <h3 style="font-family:var(--store-font-heading); margin:0 0 8px; font-size:1.15rem; color:var(--text-primary);">
-                                    Hướng Dẫn Thanh Toán VietQR Tự Động
-                                </h3>
-                                <p style="font-size:0.85rem; color:var(--text-secondary); margin:0 0 14px;">
-                                    Mở ứng dụng ngân hàng hoặc ví điện tử bất kỳ, chọn <strong>Quét mã QR</strong> để chuyển tiền với thông tin chính xác tuyệt đối.
-                                </p>
-                                <div class="bank-info-grid">
-                                    <div class="bank-info-row">
-                                        <span style="color:var(--text-muted);">Ngân hàng:</span>
-                                        <strong>Vietcombank (Ngoại thương VN)</strong>
-                                    </div>
-                                    <div class="bank-info-row">
-                                        <span style="color:var(--text-muted);">Số tài khoản:</span>
-                                        <div style="display:flex; align-items:center; gap:6px;">
-                                            <strong style="font-family:monospace; color:var(--store-gold); font-size:1.05rem;">9988 7766 5500</strong>
-                                            <button type="button" class="coupon-pill-btn" style="padding:2px 6px;" onclick="Storefront.copyToClipboard('998877665500', 'Đã chép số tài khoản!')">Chép STK</button>
-                                        </div>
-                                    </div>
-                                    <div class="bank-info-row">
-                                        <span style="color:var(--text-muted);">Chủ tài khoản:</span>
-                                        <strong>CONG TY TNHH VAST STUDIO VIETNAM</strong>
-                                    </div>
-                                    <div class="bank-info-row">
-                                        <span style="color:var(--text-muted);">Số tiền chuyển:</span>
-                                        <strong style="font-family:var(--store-font-heading); color:var(--store-gold); font-size:1.1rem;">${this.formatMoney(order.total)}</strong>
-                                    </div>
-                                    <div class="bank-info-row">
-                                        <span style="color:var(--text-muted);">Nội dung chuyển:</span>
-                                        <div style="display:flex; align-items:center; gap:6px;">
-                                            <strong style="font-family:monospace; color:var(--text-primary); font-size:0.95rem;">${order.id} ${order.customerPhone}</strong>
-                                            <button type="button" class="coupon-pill-btn" style="padding:2px 6px;" onclick="Storefront.copyToClipboard('${order.id} ${order.customerPhone}', 'Đã chép nội dung chuyển tiền!')">Chép ND</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ` : ''}
+                    ${isOnlinePay ? this.renderSepayCardHtml(order, sepayData) : ''}
 
                     <!-- ORDER OVERVIEW DETAILS -->
                     <table class="order-overview-table">
@@ -2095,7 +2195,7 @@
                             </tr>
                             <tr>
                                 <td>Hình thức thanh toán:</td>
-                                <td><strong>${order.paymentMethod}</strong> (${order.paymentStatus || 'Chờ xác nhận'})</td>
+                                <td id="success-payment-status-cell"><strong>${order.paymentMethod}</strong> (${order.paymentStatus === 'paid' ? '<strong style="color:#10b981">Đã thanh toán</strong>' : 'Chờ thanh toán'})</td>
                             </tr>
                             ${order.note ? `
                             <tr>
@@ -2152,6 +2252,116 @@
                     if (window.ICONS[iconName]) el.innerHTML = window.ICONS[iconName];
                 });
             }
+
+            if (isOnlinePay && !isPaid && order.orderStatus !== 'cancelled') {
+                this.startSepayPaymentPolling(order.id);
+            }
+        },
+
+        async triggerLocalSepayTestPay(orderId, btn) {
+            const origText = btn ? btn.textContent : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Đang xác nhận...';
+            }
+            try {
+                const res = await fetch('api.php?action=sepay_test_pay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order: orderId })
+                });
+                const payload = await res.json();
+                if (!res.ok || !payload.ok) {
+                    throw new Error(payload.message || 'Không thể giả lập thanh toán SePay.');
+                }
+                await this.checkSepayPaymentStatus(orderId, false);
+            } catch (err) {
+                this.showToast(err.message || 'Lỗi giả lập thanh toán.', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = origText;
+                }
+            }
+        },
+
+        stopSepayPaymentPolling() {
+            if (this.state.sepayPollTimer) {
+                clearInterval(this.state.sepayPollTimer);
+                this.state.sepayPollTimer = null;
+            }
+        },
+
+        startSepayPaymentPolling(orderId) {
+            this.stopSepayPaymentPolling();
+            let ticks = 0;
+            this.state.sepayPollTimer = setInterval(() => {
+                ticks += 1;
+                if (ticks > 300 || !document.getElementById('sepay-live-status')) {
+                    this.stopSepayPaymentPolling();
+                    return;
+                }
+                this.checkSepayPaymentStatus(orderId, false);
+            }, 3000);
+        },
+
+        async checkSepayPaymentStatus(orderId, isManual = false) {
+            try {
+                const res = await fetch(`api.php?action=payment_status&order=${encodeURIComponent(orderId)}`);
+                const data = await res.json();
+                if (!data || !data.ok) return;
+
+                const statusEl = document.getElementById('sepay-live-status');
+                const cellEl = document.getElementById('success-payment-status-cell');
+
+                if (data.paymentStatus === 'paid') {
+                    this.stopSepayPaymentPolling();
+                    if (statusEl) {
+                        statusEl.className = 'sepay-status-banner is-paid';
+                        statusEl.innerHTML = `<span>✓ ĐÃ THANH TOÁN THÀNH CÔNG QUA SEPAY${data.transactionCode ? ' · Mã GD: ' + data.transactionCode : ''} (${data.statusLabel || 'Đã xác nhận'})</span>`;
+                    }
+                    if (cellEl) {
+                        cellEl.innerHTML = `<strong>${data.paymentMethod}</strong> (<strong style="color:#10b981">Đã thanh toán</strong>${data.transactionCode ? ' · ' + data.transactionCode : ''})`;
+                    }
+                    this.showToast(`SePay đã xác nhận thanh toán đơn #${orderId}!`, 'success');
+                } else if (data.orderStatus === 'cancelled') {
+                    this.stopSepayPaymentPolling();
+                    if (statusEl) {
+                        statusEl.className = 'sepay-status-banner';
+                        statusEl.innerHTML = '<span>Đơn hàng này đã bị hủy.</span>';
+                    }
+                } else if (isManual) {
+                    this.showToast('Chưa ghi nhận chuyển khoản mới. Nếu bạn vừa chuyển, vui lòng đợi thêm vài giây.', 'info');
+                }
+            } catch (err) {
+                if (isManual) {
+                    this.showToast('Không thể kiểm tra trạng thái thanh toán lúc này.', 'error');
+                }
+            }
+        },
+
+        async checkCustomerOrderSepay(orderCode, btn) {
+            const origText = btn ? btn.textContent : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Đang kiểm tra...';
+            }
+            try {
+                const res = await fetch(`api.php?action=payment_status&order=${encodeURIComponent(orderCode)}`);
+                const data = await res.json();
+                if (data && data.ok && data.paymentStatus === 'paid') {
+                    this.showToast(`Đơn #${orderCode} đã thanh toán thành công qua SePay! Đang tải lại...`, 'success');
+                    setTimeout(() => { window.location.href = `auth.php?detail_order=${encodeURIComponent(orderCode)}`; }, 700);
+                    return;
+                }
+                this.showToast('Chưa nhận được thanh toán cho đơn này. Vui lòng thử lại sau vài giây.', 'info');
+            } catch (err) {
+                this.showToast('Lỗi kết nối kiểm tra thanh toán.', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = origText;
+                }
+            }
         },
 
         copyToClipboard(text, msg) {
@@ -2180,7 +2390,6 @@
                 this.renderAuthForms('login');
             }
         },
-
         renderAuthForms(activeTab = 'login') {
             const container = document.getElementById('auth-main-container');
             if (!container) return;
@@ -2232,57 +2441,11 @@
                                         </div>
                                     </div>
 
-                                    <div class="auth-extra-row">
-                                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                                            <input type="checkbox" id="login-remember" style="accent-color:var(--store-gold); cursor:pointer;" checked>
-                                            <span style="color:var(--text-secondary);">Ghi nhớ đăng nhập</span>
-                                        </label>
-                                        <a class="auth-forgot-link" onclick="Storefront.handleForgotPassword()">Quên mật khẩu?</a>
-                                    </div>
-
                                     <button type="submit" class="btn-auth-submit">
                                         <span>Đăng Nhập Ngay</span>
                                         <span data-icon="arrowRight"></span>
                                     </button>
                                 </form>
-
-                                <!-- Demo Accounts Quick Fill -->
-                                <div class="auth-demo-card">
-                                    <div style="font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">
-                                        ⚡ Trải nghiệm nhanh với tài khoản mẫu (Click để đăng nhập):
-                                    </div>
-                                    <div class="demo-pills-list">
-                                        <button type="button" class="demo-account-btn" onclick="Storefront.fillDemoAccount('hoangminh.design@gmail.com', '123456')">
-                                            <div>
-                                                <strong>Nguyễn Hoàng Minh</strong>
-                                                <div style="font-size:0.72rem; color:var(--text-muted);">hoangminh.design@gmail.com</div>
-                                            </div>
-                                            <span class="method-badge-rec">VIP Black Card</span>
-                                        </button>
-                                        <button type="button" class="demo-account-btn" onclick="Storefront.fillDemoAccount('thaoly.tran@outlook.com', '123456')">
-                                            <div>
-                                                <strong>Trần Thảo Ly</strong>
-                                                <div style="font-size:0.72rem; color:var(--text-muted);">thaoly.tran@outlook.com</div>
-                                            </div>
-                                            <span class="method-badge-rec" style="background:rgba(217, 119, 6, 0.1);">Gold Member</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="auth-divider-line">
-                                    <span>Hoặc đăng nhập với</span>
-                                </div>
-
-                                <div class="social-auth-grid">
-                                    <button type="button" class="btn-social-auth" onclick="Storefront.handleSocialLogin('Google')">
-                                        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.54 0 2.94.55 4.04 1.45l3.03-3.03C17.24 1.7 14.77 1 12 1 7.42 1 3.52 3.55 1.57 7.28l3.66 2.84C6.1 7.22 8.8 5 12 5z"/><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58l3.7 2.87c2.16-2 3.72-4.94 3.72-8.69z"/><path fill="#FBBC05" d="M5.23 14.88c-.25-.72-.38-1.49-.38-2.28s.13-1.56.38-2.28L1.57 7.28C.57 9.17 0 11.28 0 12.6s.57 3.43 1.57 5.32l3.66-2.84z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.7-2.87c-1.08.72-2.45 1.16-4.23 1.16-3.2 0-5.9-2.22-6.77-5.12L1.57 17.1C3.52 20.83 7.42 24 12 24z"/></svg>
-                                        Google
-                                    </button>
-                                    <button type="button" class="btn-social-auth" onclick="Storefront.handleSocialLogin('Apple')">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.93-2.85-.9.04-2 .6-2.65 1.35-.58.67-1.09 1.74-.95 2.78 1.01.08 2.05-.53 2.67-1.28"/></svg>
-                                        Apple ID
-                                    </button>
-                                </div>
                             </div>
 
                             <!-- TAB PANE 2: ĐĂNG KÝ -->
@@ -2321,10 +2484,10 @@
                                     </div>
 
                                     <div class="auth-input-group">
-                                        <label class="auth-label">Mật khẩu (tối thiểu 6 ký tự) <span style="color:var(--store-red)">*</span></label>
+                                        <label class="auth-label">Mật khẩu (tối thiểu 8 ký tự) <span style="color:var(--store-red)">*</span></label>
                                         <div class="auth-input-wrap">
                                             <input type="password" id="reg-password" class="auth-input" 
-                                                   placeholder="Tạo mật khẩu an toàn..." required minlength="6">
+                                                   placeholder="Tạo mật khẩu an toàn..." required minlength="8" maxlength="72" autocomplete="new-password">
                                             <button type="button" class="btn-toggle-eye" onclick="Storefront.togglePasswordVisibility('reg-password', this)">
                                                 <span data-icon="eye"></span>
                                             </button>
@@ -2335,7 +2498,7 @@
                                         <label class="auth-label">Nhập lại mật khẩu <span style="color:var(--store-red)">*</span></label>
                                         <div class="auth-input-wrap">
                                             <input type="password" id="reg-confirm-password" class="auth-input" 
-                                                   placeholder="Xác nhận lại mật khẩu..." required minlength="6">
+                                                   placeholder="Xác nhận lại mật khẩu..." required minlength="8" maxlength="72" autocomplete="new-password">
                                             <button type="button" class="btn-toggle-eye" onclick="Storefront.togglePasswordVisibility('reg-confirm-password', this)">
                                                 <span data-icon="eye"></span>
                                             </button>
@@ -2397,21 +2560,27 @@
             }
         },
 
-        fillDemoAccount(identifier, pwd) {
-            this.switchAuthTab('login');
-            const idInput = document.getElementById('login-identifier');
-            const pwdInput = document.getElementById('login-password');
-            if (idInput && pwdInput) {
-                idInput.value = identifier;
-                pwdInput.value = pwd;
-                this.showToast(`Đã tự động điền tài khoản: ${identifier}`, 'info');
-                // Auto trigger login
-                const fakeEvent = { preventDefault: () => {} };
-                this.handleLoginSubmit(fakeEvent);
+        async initAuthPage() {
+            const container = document.getElementById('auth-main-container');
+            if (!container || !window.StoreModel) return;
+
+            window.StoreModel.getCustomers();
+            container.textContent = 'Đang kiểm tra tài khoản...';
+            try {
+                const session = await window.StoreModel.refreshCustomerSession();
+                if (session.user) {
+                    this.renderCustomerDashboard(session.user);
+                } else {
+                    this.renderAuthForms('login');
+                }
+            } catch (error) {
+                console.error('Unable to check customer session:', error);
+                this.showToast('Không thể kết nối dịch vụ tài khoản. Vui lòng tải lại trang.', 'error');
+                this.renderAuthForms('login');
             }
         },
 
-        handleLoginSubmit(e) {
+        async handleLoginSubmit(e) {
             if (e) e.preventDefault();
             if (!window.StoreModel) return;
 
@@ -2423,25 +2592,32 @@
                 return;
             }
 
-            const res = window.StoreModel.loginCustomer(identifier, password);
-            if (res.success) {
-                this.showToast(`Chào mừng bạn quay trở lại, ${res.user.name}!`, 'success');
-                
-                // Check if redirected from checkout
-                const params = new URLSearchParams(window.location.search);
-                const redirect = params.get('redirect');
-                if (redirect) {
-                    window.location.href = redirect;
-                    return;
-                }
+            try {
+                const res = await window.StoreModel.loginCustomer(identifier, password);
+                if (res.success) {
+                    this.showToast('Đăng nhập thành công. Chào mừng bạn quay trở lại!', 'success');
 
-                this.renderCustomerDashboard(res.user);
-            } else {
-                this.showToast(res.message, 'error');
+                    const params = new URLSearchParams(window.location.search);
+                    const redirect = params.get('redirect');
+                    if (redirect) {
+                        const destination = new URL(redirect, window.location.href);
+                        if (destination.origin === window.location.origin) {
+                            window.location.href = destination.href;
+                            return;
+                        }
+                    }
+
+                    this.renderCustomerDashboard(res.user);
+                } else {
+                    this.showToast(res.message || 'Đăng nhập thất bại.', 'error');
+                }
+            } catch (error) {
+                console.error('Customer login failed:', error);
+                this.showToast('Không thể kết nối dịch vụ tài khoản. Vui lòng thử lại.', 'error');
             }
         },
 
-        handleRegisterSubmit(e) {
+        async handleRegisterSubmit(e) {
             if (e) e.preventDefault();
             if (!window.StoreModel) return;
 
@@ -2462,8 +2638,8 @@
                 return;
             }
 
-            if (password.length < 6) {
-                this.showToast('Mật khẩu phải chứa ít nhất 6 ký tự!', 'error');
+            if (password.length < 8 || password.length > 72) {
+                this.showToast('Mật khẩu phải chứa từ 8 đến 72 ký tự!', 'error');
                 return;
             }
 
@@ -2472,50 +2648,37 @@
                 return;
             }
 
-            const res = window.StoreModel.registerCustomer({
-                name, phone: cleanPhone, email, password
-            });
-
-            if (res.success) {
-                this.showToast(`Đăng ký thành công! Chào mừng thành viên mới ${res.user.name}.`, 'success');
-                this.renderCustomerDashboard(res.user);
-            } else {
-                this.showToast(res.message, 'error');
+            try {
+                const res = await window.StoreModel.registerCustomer({
+                    name, phone: cleanPhone, email, password
+                });
+                if (res.success) {
+                    this.showToast('Đăng ký thành công. Chào mừng thành viên mới!', 'success');
+                    this.renderCustomerDashboard(res.user);
+                } else {
+                    this.showToast(res.message || 'Đăng ký thất bại.', 'error');
+                }
+            } catch (error) {
+                console.error('Customer registration failed:', error);
+                this.showToast('Không thể kết nối dịch vụ tài khoản. Vui lòng thử lại.', 'error');
             }
         },
 
-        handleForgotPassword() {
-            const emailOrPhone = prompt('Nhập địa chỉ Email hoặc Số điện thoại để nhận mã khôi phục mật khẩu:');
-            if (emailOrPhone && emailOrPhone.trim()) {
-                this.showToast(`Hệ thống đã gửi liên kết đặt lại mật khẩu đến: ${emailOrPhone.trim()}`, 'success');
-            }
-        },
-
-        handleSocialLogin(provider) {
-            this.showToast(`Đang kết nối xác thực an toàn qua ${provider}...`, 'info');
-            setTimeout(() => {
-                const dummyUser = {
-                    id: 'CUS-' + Math.floor(100 + Math.random() * 900),
-                    name: provider === 'Google' ? 'Khách Google' : 'Khách Apple',
-                    email: `user.${provider.toLowerCase()}@vaststudio.vn`,
-                    phone: '0988 123 456',
-                    city: 'Hà Nội',
-                    tier: 'Standard',
-                    ordersCount: 1,
-                    totalSpent: 380000
-                };
-                window.StoreModel.setCurrentUser(dummyUser);
-                this.showToast(`Đăng nhập thành công qua ${provider}!`, 'success');
-                this.renderCustomerDashboard(dummyUser);
-            }, 800);
-        },
-
-        handleLogout() {
+        async handleLogout() {
             if (!confirm('Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?')) return;
             if (window.StoreModel) {
-                window.StoreModel.logoutCustomer();
-                this.showToast('Đã đăng xuất tài khoản thành công', 'info');
-                this.renderAuthForms('login');
+                try {
+                    const res = await window.StoreModel.logoutCustomer();
+                    if (res.success) {
+                        this.showToast('Đã đăng xuất tài khoản thành công', 'info');
+                        this.renderAuthForms('login');
+                    } else {
+                        this.showToast(res.message || 'Đăng xuất thất bại.', 'error');
+                    }
+                } catch (error) {
+                    console.error('Customer logout failed:', error);
+                    this.showToast('Không thể kết nối dịch vụ tài khoản. Vui lòng thử lại.', 'error');
+                }
             }
         },
 
@@ -2539,19 +2702,24 @@
             const initial = (user.name || 'U').trim().charAt(0).toUpperCase();
             const totalOrders = userOrders.length || user.ordersCount || 0;
             const totalSpent = userOrders.reduce((sum, o) => sum + (o.total || 0), 0) || user.totalSpent || 0;
+            const safeName = this.escapeHtml(user.name);
+            const safeEmail = this.escapeHtml(user.email || 'Chưa cập nhật email');
+            const safePhone = this.escapeHtml(user.phone || '');
+            const safeTier = this.escapeHtml(user.tier || 'Thành viên Standard');
+            const safeInitial = this.escapeHtml(initial);
 
             container.innerHTML = `
                 <div class="profile-dashboard-layout">
                     <!-- LEFT SIDEBAR: USER INFO -->
                     <div class="profile-card-base profile-user-card">
-                        <div class="profile-avatar-circle">${initial}</div>
-                        <h2 class="profile-user-name">${user.name}</h2>
+                        <div class="profile-avatar-circle">${safeInitial}</div>
+                        <h2 class="profile-user-name">${safeName}</h2>
                         <div class="profile-user-meta">
-                            <div>${user.email || 'Chưa cập nhật email'}</div>
-                            <div>${user.phone || ''}</div>
+                            <div>${safeEmail}</div>
+                            <div>${safePhone}</div>
                         </div>
                         <div class="profile-tier-badge">
-                            <span>⭐</span> ${user.tier || 'Thành viên Standard'}
+                            <span>⭐</span> ${safeTier}
                         </div>
 
                         <div class="profile-stats-grid">
@@ -2599,14 +2767,16 @@
                                         else if (order.orderStatus === 'completed') statusBadge = '<span class="status-badge status-completed">Đã giao thành công</span>';
                                         else if (order.orderStatus === 'cancelled') statusBadge = '<span class="status-badge status-cancelled">Đã hủy</span>';
 
-                                        const itemsSummary = (order.items || []).map(i => `${i.name} (x${i.quantity})`).join(', ');
+                                        const itemsSummary = (order.items || []).map(i => `${this.escapeHtml(i.name)} (x${this.escapeHtml(i.quantity)})`).join(', ');
+                                        const orderId = this.escapeHtml(order.id);
+                                        const orderDate = this.escapeHtml(order.createdAt || '');
 
                                         return `
                                             <div class="profile-order-card">
                                                 <div class="profile-order-top">
                                                     <div>
-                                                        <span class="profile-order-id">${order.id}</span>
-                                                        <span style="font-size:0.75rem; color:var(--text-muted); margin-left:8px;">${order.createdAt || ''}</span>
+                                                        <span class="profile-order-id">${orderId}</span>
+                                                        <span style="font-size:0.75rem; color:var(--text-muted); margin-left:8px;">${orderDate}</span>
                                                     </div>
                                                     <div>${statusBadge}</div>
                                                 </div>
@@ -2620,7 +2790,7 @@
                                                             ${this.formatMoney(order.total)}
                                                         </strong>
                                                     </div>
-                                                    <a href="order-tracking.php?order=${order.id}" class="btn-card-addcart" style="text-decoration:none; padding:6px 14px; font-size:0.8rem;">
+                                                    <a href="order-tracking.php?order=${encodeURIComponent(order.id)}" class="btn-card-addcart" style="text-decoration:none; padding:6px 14px; font-size:0.8rem;">
                                                         Theo dõi đơn
                                                     </a>
                                                 </div>
@@ -2671,19 +2841,19 @@
                                 <div class="checkout-form-grid">
                                     <div>
                                         <label class="checkout-label">Họ và tên</label>
-                                        <input type="text" id="prof-name" class="checkout-input" value="${user.name || ''}" required>
+                                        <input type="text" id="prof-name" class="checkout-input" value="${safeName}" required>
                                     </div>
                                     <div>
                                         <label class="checkout-label">Số điện thoại</label>
-                                        <input type="tel" id="prof-phone" class="checkout-input" value="${user.phone || ''}" required>
+                                        <input type="tel" id="prof-phone" class="checkout-input" value="${safePhone}" required>
                                     </div>
                                     <div>
                                         <label class="checkout-label">Email</label>
-                                        <input type="email" id="prof-email" class="checkout-input" value="${user.email || ''}" required>
+                                        <input type="email" id="prof-email" class="checkout-input" value="${this.escapeHtml(user.email || '')}" required>
                                     </div>
                                     <div>
                                         <label class="checkout-label">Tỉnh / Thành phố sinh sống</label>
-                                        <input type="text" id="prof-city" class="checkout-input" value="${user.city || 'Hà Nội'}">
+                                        <input type="text" id="prof-city" class="checkout-input" value="${this.escapeHtml(user.city || 'Hà Nội')}">
                                     </div>
                                 </div>
 
@@ -2868,7 +3038,9 @@
             const cart = window.StoreModel.getCart();
             const container = document.getElementById('cart-items-container');
             const subtotal = window.StoreModel.getCartSubtotal();
-            const freeShipThreshold = 500000;
+            const cartSettings = window.StoreModel.getSettings() || {};
+            const freeShipThreshold = Number(cartSettings.freeShippingThreshold ?? 500000);
+            const stdShipFee = Number(cartSettings.defaultShippingFee ?? 30000);
 
             const meterText = document.getElementById('shipping-meter-text');
             const meterFill = document.getElementById('shipping-meter-fill');
@@ -2934,7 +3106,7 @@
                 }
             }
 
-            const shippingFee = (subtotal >= freeShipThreshold || subtotal === 0) ? 0 : 30000;
+            const shippingFee = (subtotal >= freeShipThreshold || subtotal === 0) ? 0 : stdShipFee;
             const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
 
             const subtotalEl = document.getElementById('cart-summary-subtotal');
@@ -3027,8 +3199,10 @@
 
             const cart = window.StoreModel.getCart();
             const subtotal = window.StoreModel.getCartSubtotal();
-            const freeShipThreshold = 500000;
-            const shippingFee = (subtotal >= freeShipThreshold || subtotal === 0) ? 0 : 30000;
+            const modalSettings = window.StoreModel.getSettings() || {};
+            const freeShipThreshold = Number(modalSettings.freeShippingThreshold ?? 500000);
+            const stdShipFee = Number(modalSettings.defaultShippingFee ?? 30000);
+            const shippingFee = (subtotal >= freeShipThreshold || subtotal === 0) ? 0 : stdShipFee;
 
             let discount = 0;
             let couponCode = null;

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../models/OrderWorkflow.php';
+require_once __DIR__ . '/../../models/SepayService.php';
 
 $e = static function ($value): string {
     return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -408,6 +409,10 @@ include __DIR__ . '/../partials/header.php';
                                             $latestCancel = $order['cancel_requests'][0] ?? null;
                                             $latestReturn = $order['return_requests'][0] ?? null;
                                             $safeDomId = preg_replace('/[^A-Za-z0-9_-]/', '', $orderCode);
+                                            $isQrPending = ($order['payment_status'] ?? 'pending') === 'pending'
+                                                && $orderStatus !== 'cancelled'
+                                                && (stripos((string)$order['payment_method'], 'qr') !== false || stripos((string)$order['payment_method'], 'sepay') !== false);
+                                            $sepayQr = $isQrPending ? (new SepayService(getDatabaseConnection()))->buildQrData($order) : null;
                                         ?>
                                             <article class="profile-order-card" id="order-card-<?= $e($safeDomId) ?>">
                                                 <div class="profile-order-top">
@@ -488,6 +493,12 @@ include __DIR__ . '/../partials/header.php';
                                                         </strong>
                                                     </div>
                                                     <div class="profile-order-actions">
+                                                        <?php if ($isQrPending && $sepayQr): ?>
+                                                            <button type="button" class="btn-order-confirm" style="background:var(--store-gold);color:#111" onclick="Storefront.toggleCustomerPanel('sepay-qr-panel-<?= $e($safeDomId) ?>')">
+                                                                Thanh toán QR SePay
+                                                            </button>
+                                                        <?php endif; ?>
+
                                                         <?php if ($canConfirmReceipt): ?>
                                                             <form method="post" action="auth.php" style="margin:0;" onsubmit="return confirm('Xác nhận bạn đã nhận được đầy đủ hàng và hài lòng với đơn #<?= $e($orderCode) ?>? Trạng thái đơn sẽ chuyển sang Hoàn tất.');">
                                                                 <input type="hidden" name="csrf" value="<?= $e($csrf) ?>">
@@ -505,7 +516,7 @@ include __DIR__ . '/../partials/header.php';
                                                             </button>
                                                         <?php endif; ?>
 
-                                                        <?php if ($canDirectCancel): ?>
+                                                <?php if ($canDirectCancel): ?>
                                                             <button type="button" class="btn-order-danger-outline" onclick="Storefront.toggleCustomerPanel('cancel-panel-<?= $e($safeDomId) ?>')">
                                                                 Hủy đơn
                                                             </button>
@@ -522,6 +533,28 @@ include __DIR__ . '/../partials/header.php';
                                                         </a>
                                                     </div>
                                                 </div>
+
+                                                <?php if ($isQrPending && $sepayQr): ?>
+                                                    <div id="sepay-qr-panel-<?= $e($safeDomId) ?>" class="profile-action-drawer" <?= $detailOrderCode === $orderCode ? '' : 'hidden' ?>>
+                                                        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+                                                            <div style="background:#fff;padding:8px;border-radius:8px;width:150px;flex-shrink:0">
+                                                                <img src="<?= $e($sepayQr['qrUrl']) ?>" onerror="this.onerror=null;this.src='<?= $e($sepayQr['fallbackQrUrl']) ?>';" alt="QR SePay <?= $e($orderCode) ?>" style="width:100%;height:auto;display:block">
+                                                            </div>
+                                                            <div style="flex:1;min-width:220px;display:grid;gap:6px;font-size:0.82rem">
+                                                                <strong style="font-size:0.92rem;color:var(--text-primary)">Quét mã SePay VietQR để thanh toán tự động</strong>
+                                                                <div>Ngân hàng: <strong><?= $e($sepayQr['bankName']) ?></strong></div>
+                                                                <div>Số tài khoản: <strong style="font-family:monospace;color:var(--store-gold)"><?= $e($sepayQr['bankAccount']) ?></strong></div>
+                                                                <div>Chủ tài khoản: <strong><?= $e($sepayQr['bankOwner']) ?></strong></div>
+                                                                <div>Số tiền: <strong><?= $e(formatVND($order['total'])) ?></strong></div>
+                                                                <div>Nội dung CK: <strong style="font-family:monospace;color:var(--store-gold)"><?= $e($sepayQr['transferContent']) ?></strong></div>
+                                                                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+                                                                    <button type="button" class="btn-order-confirm" onclick="Storefront.checkCustomerOrderSepay('<?= $e($orderCode) ?>', this)">Kiểm tra thanh toán</button>
+                                                                    <button type="button" class="btn-order-outline" onclick="Storefront.copyToClipboard('<?= $e($sepayQr['transferContent']) ?>', 'Đã chép nội dung CK!')">Chép nội dung</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                <?php endif; ?>
 
                                                 <?php if ($canDirectCancel): ?>
                                                     <div id="cancel-panel-<?= $e($safeDomId) ?>" class="profile-action-drawer" hidden>

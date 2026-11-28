@@ -1,5 +1,6 @@
 .env
 includes/smtp.local.php
+includes/sepay.local.php
 uploads/returns/*
 !uploads/returns/.gitkeep
 node_modules/

@@ -133,6 +133,7 @@ $navSections = [
     'Khách hàng & Bán hàng' => [
         'customers' => ['label' => 'Khách hàng', 'icon' => 'customers', 'badge' => null],
         'coupons' => ['label' => 'Khuyến mãi', 'icon' => 'coupons', 'badge' => null],
+        'sepay' => ['label' => 'Giao dịch SePay', 'icon' => 'dollar', 'badge' => null],
     ],
     'Hệ thống' => [
         'emails' => ['label' => 'Nhật ký Email', 'icon' => 'mail', 'badge' => ($stats['failed_emails'] ?? 0) > 0 ? (string)$stats['failed_emails'] : null],
@@ -1019,10 +1020,21 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                                         <div style="font-size:.83rem"><strong>Mã đơn:</strong> <span class="mono-id"><?= $e($selectedOrder['id']) ?></span></div>
                                         <div style="font-size:.83rem"><strong>Phương thức:</strong> <?= $e($selectedOrder['payment_method'] ?: '—') ?></div>
                                         <div style="font-size:.83rem"><strong>TT thanh toán:</strong> <span class="badge <?= $paymentBadgeClass($selectedOrder['payment_status']) ?>"><?= $e($selPayLabel) ?></span></div>
+                                        <?php if (!empty($selectedOrder['payment_transaction_code'])): ?>
+                                            <div style="font-size:.83rem"><strong>Mã GD SePay / NH:</strong> <span class="mono-id"><?= $e($selectedOrder['payment_transaction_code']) ?></span></div>
+                                        <?php endif; ?>
                                         <div style="font-size:.83rem"><strong>Vận chuyển:</strong> <?= $e($selectedOrder['shipping_method'] ?: '—') ?></div>
                                         <div style="font-size:.83rem"><strong>Mã giảm giá:</strong> <?= $e($selectedOrder['coupon_code'] ?: 'Không dùng') ?></div>
                                         <?php if ((float)($selectedOrder['refunded_amount'] ?? 0) > 0): ?>
                                             <div style="font-size:.83rem;color:var(--status-danger-text)"><strong>Đã hoàn tiền:</strong> <?= $money($selectedOrder['refunded_amount']) ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($selectedOrder['payment_status'] === 'pending' && $selStatus !== 'cancelled'): ?>
+                                            <form method="post" style="margin-top:8px" onsubmit="return confirm('Giả lập Webhook SePay xác nhận đã thu đủ <?= $e($money($selectedOrder['total'])) ?> cho đơn #<?= $e($selectedOrder['id']) ?>?')">
+                                                <?= $formAction('sepay_simulate') ?>
+                                                <input type="hidden" name="order_code" value="<?= $e($selectedOrder['id']) ?>">
+                                                <input type="hidden" name="return_tab" value="orders">
+                                                <button class="btn-success-sm" type="submit"><?= $icon('checkCircle', 14) ?> Test SePay xác nhận đã thu tiền</button>
+                                            </form>
                                         <?php endif; ?>
                                     </div>
 
@@ -1708,19 +1720,66 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                                     </div>
                                     <div class="form-group">
                                         <label class="admin-field">
-                                            <span>Tên ngân hàng</span>
+                                            <span>Tên ngân hàng hiển thị</span>
                                             <input name="bankName" value="<?= $e($settings['bankName'] ?? '') ?>">
                                         </label>
                                     </div>
-                                    <div class="form-row-2 form-group" style="margin-bottom:0">
+                                    <div class="form-row-2 form-group">
                                         <label class="admin-field">
-                                            <span>Số tài khoản</span>
-                                            <input name="bankAccount" value="<?= $e($settings['bankAccount'] ?? '') ?>">
+                                            <span>Số tài khoản / VA SePay *</span>
+                                            <input name="bankAccount" value="<?= $e($settings['bankAccount'] ?? '') ?>" placeholder="VD: 1017588888">
                                         </label>
                                         <label class="admin-field">
-                                            <span>Chủ tài khoản</span>
+                                            <span>Chủ tài khoản *</span>
                                             <input name="bankOwner" value="<?= $e($settings['bankOwner'] ?? '') ?>">
                                         </label>
+                                    </div>
+                                    <div class="form-row-2 form-group">
+                                        <label class="admin-field">
+                                            <span>Mã ngân hàng chuẩn SePay (VietQR)</span>
+                                            <select name="sepayBankCode">
+                                                <?php $curBankCode = $sepayConfig['bankCode'] ?? 'Vietcombank';
+                                                foreach ($sepayBanks ?? [] as $bCode => $bLabel): ?>
+                                                    <option value="<?= $e($bCode) ?>" <?= $curBankCode === $bCode ? 'selected' : '' ?>><?= $e($bLabel) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </label>
+                                        <label class="admin-field">
+                                            <span>Tiền tố nội dung CK</span>
+                                            <input name="sepayPrefix" value="<?= $e($sepayConfig['prefix'] ?? 'VAST') ?>" placeholder="VAST">
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="admin-field">
+                                            <span>Link quản trị công ty SePay</span>
+                                            <input name="sepayCompanyUrl" value="<?= $e($sepayConfig['companyUrl'] ?? 'https://my.sepay.vn/company/ordersuccess') ?>">
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="admin-field">
+                                            <span>SePay API Token — Khuyên dùng cho Localhost (lấy tại Cấu hình Công ty → API Access)</span>
+                                            <input type="password" name="sepayApiToken" autocomplete="off" placeholder="<?= !empty($sepayConfig['apiToken']) ? '•••••••• (Đã thiết lập — bỏ trống nếu giữ nguyên)' : 'Dán API Token từ my.sepay.vn để tự động check giao dịch cả trên localhost' ?>">
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="admin-field">
+                                            <span>SePay Webhook API Key (tùy chọn — nhập mới để cập nhật)</span>
+                                            <input type="password" name="sepayWebhookToken" autocomplete="off" placeholder="<?= !empty($sepayConfig['apiKey']) ? '•••••••• (Đã thiết lập — bỏ trống nếu giữ nguyên)' : 'Dán API Key cấu hình tại mục Webhooks trên my.sepay.vn' ?>">
+                                        </label>
+                                    </div>
+                                    <div style="display:grid;gap:8px;margin-bottom:10px;font-size:.82rem">
+                                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                                            <input type="checkbox" name="sepayEnabled" value="1" <?= !empty($sepayConfig['enabled']) ? 'checked' : '' ?>>
+                                            <span>Bật thanh toán QR tự động qua SePay (`qr.sepay.vn`)</span>
+                                        </label>
+                                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                                            <input type="checkbox" name="sepayRequireAuth" value="1" <?= !empty($sepayConfig['requireAuth']) ? 'checked' : '' ?>>
+                                            <span>Bắt buộc xác thực Header <code>Authorization: Apikey</code> khi nhận Webhook</span>
+                                        </label>
+                                    </div>
+                                    <div class="admin-alert admin-alert--info" style="font-size:.78rem;display:grid;gap:4px">
+                                        <strong>URL Webhook gắn lên SePay (<a href="<?= $e($sepayConfig['companyUrl'] ?? 'https://my.sepay.vn/company/ordersuccess') ?>" target="_blank" rel="noopener">Mở my.sepay.vn →</a>):</strong>
+                                        <code><?= $e($sepayConfig['webhookUrl'] ?? '') ?></code>
                                     </div>
                                 </div>
                             </section>
@@ -2024,6 +2083,187 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                                                         <span class="admin-muted" style="font-size:.76rem">Đã gửi</span>
                                                     <?php endif; ?>
                                                 </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </section>
+
+                <?php elseif ($tab === 'sepay'): ?>
+                    <section class="card">
+                        <div class="card-header">
+                            <div>
+                                <h2 class="card-title">Tích hợp SePay VietQR &amp; Webhook Tự Động</h2>
+                                <p class="card-subtitle">Tự động đối soát biến động số dư và chuyển đơn hàng chờ thanh toán sang Đã thanh toán &amp; Đã xác nhận</p>
+                            </div>
+                            <div class="admin-actions">
+                                <?php if (!empty($sepayConfig['apiToken'])): ?>
+                                    <form method="post" style="display:inline-flex">
+                                        <?= $formAction('sepay_sync_now') ?>
+                                        <button class="btn-success-sm" type="submit">Đồng bộ SePay ngay</button>
+                                    </form>
+                                <?php endif; ?>
+                                <a class="btn-secondary btn-sm" href="<?= $e($sepayConfig['companyUrl'] ?? 'https://my.sepay.vn/company/ordersuccess') ?>" target="_blank" rel="noopener">Mở SePay Dashboard</a>
+                                <a class="btn-primary btn-sm" href="admin.php?tab=settings">Cấu hình tài khoản SePay</a>
+                            </div>
+                        </div>
+                        <div class="card-body" style="display:grid;gap:14px">
+                            <div class="order-workflow-grid" style="margin-bottom:0">
+                                <div class="order-workflow-box">
+                                    <span class="order-detail-cell-label">Ngân hàng thụ hưởng</span>
+                                    <strong><?= $e($sepayConfig['bankCode'] ?? 'Vietcombank') ?> — <?= $e($sepayConfig['bankAccount'] ?: 'Chưa nhập STK') ?></strong>
+                                    <div style="font-size:.8rem;color:var(--text-secondary)"><?= $e($sepayConfig['bankOwner'] ?? '') ?></div>
+                                </div>
+                                <div class="order-workflow-box">
+                                    <span class="order-detail-cell-label">Endpoint nhận Webhook SePay</span>
+                                    <code style="font-size:.78rem;word-break:break-all"><?= $e($sepayConfig['webhookUrl'] ?? '') ?></code>
+                                    <div style="font-size:.75rem;color:var(--text-muted)">Sự kiện: Tiền vào (`transferType = in`) · Cú pháp: <code><?= $e($sepayConfig['prefix'] ?? 'VAST') ?>xxxx</code></div>
+                                </div>
+                                <div class="order-workflow-box">
+                                    <span class="order-detail-cell-label">Bảo mật &amp; Trạng thái kết nối</span>
+                                    <div class="admin-actions">
+                                        <span class="badge <?= !empty($sepayConfig['apiToken']) ? 'badge-success' : 'badge-warning' ?>">
+                                            <?= !empty($sepayConfig['apiToken']) ? 'API Access: Đã kết nối' : 'API Access: Chưa gắn Token' ?>
+                                        </span>
+                                        <span class="badge <?= !empty($sepayConfig['apiKey']) ? 'badge-success' : 'badge-neutral' ?>">
+                                            <?= !empty($sepayConfig['apiKey']) ? 'Webhook Key: Đã đặt' : 'Webhook Key: Chưa đặt' ?>
+                                        </span>
+                                    </div>
+                                    <div style="font-size:.75rem;color:var(--text-muted)">
+                                        <?php if (!empty($sepayConfig['apiToken'])): ?>
+                                            Hệ thống tự đồng bộ giao dịch thật từ <code>my.sepay.vn/userapi/transactions/list</code> mỗi 3 giây (chạy được cả trên localhost).
+                                        <?php elseif (strpos((string)($sepayConfig['webhookUrl'] ?? ''), 'localhost') !== false || strpos((string)($sepayConfig['webhookUrl'] ?? ''), '127.0.0.1') !== false): ?>
+                                            Trên <code>localhost</code>, bạn chỉ cần dán <strong>SePay API Token</strong> trong Cài đặt Shop là check được giao dịch thật ngay (hoặc dùng nút Test giả lập bên dưới).
+                                        <?php else: ?>
+                                            Sẵn sàng nhận webhook trực tiếp từ <code>my.sepay.vn</code>.
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <?php if (!empty($sepayConfig['apiToken']) && is_array($sepayApiAccounts ?? null)): ?>
+                                <?php if (empty($sepayApiAccounts['ok'])): ?>
+                                    <div class="flash flash-error" style="margin:0">
+                                        <span>Không truy vấn được SePay User API: <?= $e($sepayApiAccounts['error'] ?? 'Lỗi kết nối') ?></span>
+                                    </div>
+                                <?php elseif (empty($sepayApiAccounts['accounts'])): ?>
+                                    <div class="flash" style="margin:0;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);color:inherit">
+                                        <span><strong>SePay API Token đã xác thực (HTTP 200)</strong>, nhưng tài khoản SePay hiện chưa liên kết số tài khoản ngân hàng nào (<code>0 STK</code>). Hãy vào <a href="<?= $e($sepayConfig['companyUrl'] ?? 'https://my.sepay.vn/company/ordersuccess') ?>" target="_blank" rel="noopener" style="text-decoration:underline;font-weight:700">my.sepay.vn → Ngân hàng → Liên kết tài khoản</a> rồi bấm <strong>Đồng bộ SePay ngay</strong> để tự nhận diện STK thật.</span>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="flash flash-success" style="margin:0">
+                                        <span>
+                                            <strong>SePay đang liên kết <?= $e(count($sepayApiAccounts['accounts'])) ?> tài khoản ngân hàng:</strong>
+                                            <?php foreach ($sepayApiAccounts['accounts'] as $idx => $sAcc): ?>
+                                                <?= $idx > 0 ? ' · ' : ' ' ?><code><?= $e($sAcc['bankShortName'] ?: $sAcc['bankCode']) ?></code> — <strong><?= $e($sAcc['accountNumber']) ?></strong> (<?= $e($sAcc['accountHolder']) ?>)
+                                            <?php endforeach; ?>
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endif; ?>
+
+                            <form method="post" class="admin-filters" style="grid-template-columns:minmax(220px,1.5fr) minmax(160px,1fr) auto">
+                                <?= $formAction('sepay_simulate') ?>
+                                <input type="hidden" name="return_tab" value="sepay">
+                                <label class="admin-field">
+                                    <span>Test giả lập Webhook SePay (Chọn / Nhập mã đơn)</span>
+                                    <input name="order_code" list="sepay-unpaid-orders" required placeholder="VD: VAST-12345">
+                                    <datalist id="sepay-unpaid-orders">
+                                        <?php foreach ($orders ?? [] as $ord):
+                                            if ($ord['payment_status'] === 'pending' && $ord['order_status'] !== 'cancelled'): ?>
+                                                <option value="<?= $e($ord['id']) ?>"><?= $e($ord['id']) ?> — <?= $e($ord['customer_name']) ?> (<?= $e($money($ord['total'])) ?>)</option>
+                                            <?php endif;
+                                        endforeach; ?>
+                                    </datalist>
+                                </label>
+                                <label class="admin-field">
+                                    <span>Số tiền chuyển (₫ — bỏ trống = đủ tiền)</span>
+                                    <input type="number" min="0" step="1000" name="amount" placeholder="Tự lấy tổng đơn">
+                                </label>
+                                <div class="admin-filter-actions">
+                                    <button class="btn-success-sm" type="submit" style="min-height:40px">Bắn giả lập SePay</button>
+                                </div>
+                            </form>
+
+                            <nav class="filter-pills" aria-label="Lọc giao dịch SePay">
+                                <?php foreach ([
+                                    'all' => 'Tất cả',
+                                    'matched' => 'Khớp đủ tiền',
+                                    'overpaid' => 'Chuyển dư',
+                                    'underpaid' => 'Chuyển thiếu',
+                                    'unmatched' => 'Chưa khớp đơn',
+                                    'already_paid' => 'Đã thanh toán trước',
+                                    'ignored_out' => 'Bỏ qua',
+                                ] as $sk => $sl): ?>
+                                    <a class="filter-pill <?= ($sepayFilter ?? 'all') === $sk ? 'active' : '' ?>" href="admin.php?tab=sepay&amp;sepay_status=<?= $e($sk) ?>"><?= $e($sl) ?></a>
+                                <?php endforeach; ?>
+                            </nav>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <div class="card-header">
+                            <div>
+                                <h2 class="card-title">Lịch sử Webhook SePay</h2>
+                                <p class="card-subtitle">Hiển thị <?= $e(count($sepayTransactions ?? [])) ?> giao dịch gần nhất (chống trùng lặp theo `sepay_id`)</p>
+                            </div>
+                        </div>
+                        <?php if (empty($sepayTransactions)): ?>
+                            <div class="empty-state">
+                                <?= $icon('dollar', 28) ?>
+                                <p>Chưa có giao dịch Webhook SePay nào.</p>
+                            </div>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="vast-table">
+                                    <thead>
+                                        <tr>
+                                            <th>SePay ID / Mã GD</th>
+                                            <th>Ngân hàng &amp; STK</th>
+                                            <th>Số tiền</th>
+                                            <th>Nội dung CK</th>
+                                            <th>Đơn hàng</th>
+                                            <th>Kết quả</th>
+                                            <th>Thời gian</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($sepayTransactions as $stx):
+                                            $mSt = (string)$stx['match_status'];
+                                            $mBadge = match ($mSt) {
+                                                'matched', 'overpaid' => 'badge-success',
+                                                'underpaid', 'unmatched' => 'badge-warning',
+                                                'ignored_cancelled' => 'badge-danger',
+                                                default => 'badge-neutral',
+                                            };
+                                        ?>
+                                            <tr>
+                                                <td>
+                                                    <span class="mono-id">#<?= $e($stx['sepay_id']) ?></span>
+                                                    <div style="font-size:.73rem;color:var(--text-muted);margin-top:3px"><?= $e($stx['reference_code']) ?></div>
+                                                </td>
+                                                <td>
+                                                    <strong><?= $e($stx['gateway']) ?></strong>
+                                                    <div style="font-size:.74rem;color:var(--text-muted)"><?= $e($stx['account_number'] ?: '—') ?></div>
+                                                </td>
+                                                <td><span class="price-display"><?= $money($stx['transfer_amount']) ?></span></td>
+                                                <td style="max-width:240px;font-size:.8rem">
+                                                    <div><?= $e($stx['content'] ?: $stx['description']) ?></div>
+                                                    <?php if (!empty($stx['note'])): ?>
+                                                        <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px"><?= $e($stx['note']) ?></div>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <?php if (!empty($stx['order_code'])): ?>
+                                                        <a class="mono-id" href="admin.php?tab=orders&amp;order=<?= rawurlencode($stx['order_code']) ?>"><?= $e($stx['order_code']) ?></a>
+                                                    <?php else: ?>
+                                                        <span class="admin-muted">—</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><span class="badge <?= $mBadge ?>"><?= $e($mSt) ?></span></td>
+                                                <td style="font-size:.76rem;color:var(--text-muted)"><?= $e($formatDateTime($stx['transaction_date'] ?: $stx['created_at'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>

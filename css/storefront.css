@@ -5065,3 +5065,28 @@ select.auth-input option {
     border-radius: 6px;
     border: 1px solid var(--border-color);
 }
+
+.sepay-status-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: 14px;
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.sepay-status-banner.is-waiting {
+    background: rgba(217, 119, 6, 0.12);
+    border: 1px solid rgba(217, 119, 6, 0.35);
+    color: var(--store-gold);
+}
+
+.sepay-status-banner.is-paid {
+    background: rgba(16, 185, 129, 0.14);
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    color: #10b981;
+}
