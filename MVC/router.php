@@ -8,7 +8,7 @@ if (preg_match('#^/MVC(?:/|$)#i', $requestPath)) {
 }
 
 if (PHP_SAPI === 'cli-server' && $requestPath !== '/') {
-    $routedPaths = '#^/(?:index|products|product-detail|order-tracking|about|contact|auth|checkout|admin|home|shop)\.php$#i';
+    $routedPaths = '#^/(?:index|products|product-detail|order-tracking|about|contact|auth|auth-api|checkout|admin|home|shop)\.php$#i';
     if (!preg_match($routedPaths, $requestPath)) {
         $documentRoot = realpath(dirname(__DIR__));
         $requestedFile = realpath(

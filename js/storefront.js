@@ -166,7 +166,11 @@
             const user = window.StoreModel.getCurrentUser();
             if (user) {
                 const initial = (user.name || 'U').trim().charAt(0).toUpperCase();
-                authBtn.innerHTML = `<span class="header-user-avatar" title="${user.name} (${user.tier || 'Thành viên'})">${initial}</span>`;
+                const avatar = document.createElement('span');
+                avatar.className = 'header-user-avatar';
+                avatar.title = `${user.name} (${user.tier || 'Thành viên'})`;
+                avatar.textContent = initial;
+                authBtn.replaceChildren(avatar);
             } else {
                 authBtn.innerHTML = window.ICONS?.user || `<span data-icon="user"></span>`;
             }
@@ -175,6 +179,16 @@
         // --- HELPER: FORMAT CURRENCY ---
         formatMoney(num) {
             return (num || 0).toLocaleString('vi-VN') + ' ₫';
+        },
+
+        escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
         },
 
         // --- HELPER: TOAST NOTIFICATION ---
@@ -2089,19 +2103,6 @@
         // ======================================================================
         // TRANG THÀNH VIÊN & XÁC THỰC (AUTHENTICATION & PROFILE DASHBOARD)
         // ======================================================================
-        initAuthPage() {
-            const container = document.getElementById('auth-main-container');
-            if (!container) return;
-            if (!window.StoreModel) return;
-
-            const currentUser = window.StoreModel.getCurrentUser();
-            if (currentUser) {
-                this.renderCustomerDashboard(currentUser);
-            } else {
-                this.renderAuthForms('login');
-            }
-        },
-
         renderAuthForms(activeTab = 'login') {
             const container = document.getElementById('auth-main-container');
             if (!container) return;
@@ -2153,57 +2154,11 @@
                                         </div>
                                     </div>
 
-                                    <div class="auth-extra-row">
-                                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                                            <input type="checkbox" id="login-remember" style="accent-color:var(--store-gold); cursor:pointer;" checked>
-                                            <span style="color:var(--text-secondary);">Ghi nhớ đăng nhập</span>
-                                        </label>
-                                        <a class="auth-forgot-link" onclick="Storefront.handleForgotPassword()">Quên mật khẩu?</a>
-                                    </div>
-
                                     <button type="submit" class="btn-auth-submit">
                                         <span>Đăng Nhập Ngay</span>
                                         <span data-icon="arrowRight"></span>
                                     </button>
                                 </form>
-
-                                <!-- Demo Accounts Quick Fill -->
-                                <div class="auth-demo-card">
-                                    <div style="font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">
-                                        ⚡ Trải nghiệm nhanh với tài khoản mẫu (Click để đăng nhập):
-                                    </div>
-                                    <div class="demo-pills-list">
-                                        <button type="button" class="demo-account-btn" onclick="Storefront.fillDemoAccount('hoangminh.design@gmail.com', '123456')">
-                                            <div>
-                                                <strong>Nguyễn Hoàng Minh</strong>
-                                                <div style="font-size:0.72rem; color:var(--text-muted);">hoangminh.design@gmail.com</div>
-                                            </div>
-                                            <span class="method-badge-rec">VIP Black Card</span>
-                                        </button>
-                                        <button type="button" class="demo-account-btn" onclick="Storefront.fillDemoAccount('thaoly.tran@outlook.com', '123456')">
-                                            <div>
-                                                <strong>Trần Thảo Ly</strong>
-                                                <div style="font-size:0.72rem; color:var(--text-muted);">thaoly.tran@outlook.com</div>
-                                            </div>
-                                            <span class="method-badge-rec" style="background:rgba(217, 119, 6, 0.1);">Gold Member</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="auth-divider-line">
-                                    <span>Hoặc đăng nhập với</span>
-                                </div>
-
-                                <div class="social-auth-grid">
-                                    <button type="button" class="btn-social-auth" onclick="Storefront.handleSocialLogin('Google')">
-                                        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.54 0 2.94.55 4.04 1.45l3.03-3.03C17.24 1.7 14.77 1 12 1 7.42 1 3.52 3.55 1.57 7.28l3.66 2.84C6.1 7.22 8.8 5 12 5z"/><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58l3.7 2.87c2.16-2 3.72-4.94 3.72-8.69z"/><path fill="#FBBC05" d="M5.23 14.88c-.25-.72-.38-1.49-.38-2.28s.13-1.56.38-2.28L1.57 7.28C.57 9.17 0 11.28 0 12.6s.57 3.43 1.57 5.32l3.66-2.84z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.7-2.87c-1.08.72-2.45 1.16-4.23 1.16-3.2 0-5.9-2.22-6.77-5.12L1.57 17.1C3.52 20.83 7.42 24 12 24z"/></svg>
-                                        Google
-                                    </button>
-                                    <button type="button" class="btn-social-auth" onclick="Storefront.handleSocialLogin('Apple')">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.93-2.85-.9.04-2 .6-2.65 1.35-.58.67-1.09 1.74-.95 2.78 1.01.08 2.05-.53 2.67-1.28"/></svg>
-                                        Apple ID
-                                    </button>
-                                </div>
                             </div>
 
                             <!-- TAB PANE 2: ĐĂNG KÝ -->
@@ -2242,10 +2197,10 @@
                                     </div>
 
                                     <div class="auth-input-group">
-                                        <label class="auth-label">Mật khẩu (tối thiểu 6 ký tự) <span style="color:var(--store-red)">*</span></label>
+                                        <label class="auth-label">Mật khẩu (tối thiểu 8 ký tự) <span style="color:var(--store-red)">*</span></label>
                                         <div class="auth-input-wrap">
                                             <input type="password" id="reg-password" class="auth-input" 
-                                                   placeholder="Tạo mật khẩu an toàn..." required minlength="6">
+                                                   placeholder="Tạo mật khẩu an toàn..." required minlength="8" maxlength="72" autocomplete="new-password">
                                             <button type="button" class="btn-toggle-eye" onclick="Storefront.togglePasswordVisibility('reg-password', this)">
                                                 <span data-icon="eye"></span>
                                             </button>
@@ -2256,7 +2211,7 @@
                                         <label class="auth-label">Nhập lại mật khẩu <span style="color:var(--store-red)">*</span></label>
                                         <div class="auth-input-wrap">
                                             <input type="password" id="reg-confirm-password" class="auth-input" 
-                                                   placeholder="Xác nhận lại mật khẩu..." required minlength="6">
+                                                   placeholder="Xác nhận lại mật khẩu..." required minlength="8" maxlength="72" autocomplete="new-password">
                                             <button type="button" class="btn-toggle-eye" onclick="Storefront.togglePasswordVisibility('reg-confirm-password', this)">
                                                 <span data-icon="eye"></span>
                                             </button>
@@ -2318,21 +2273,27 @@
             }
         },
 
-        fillDemoAccount(identifier, pwd) {
-            this.switchAuthTab('login');
-            const idInput = document.getElementById('login-identifier');
-            const pwdInput = document.getElementById('login-password');
-            if (idInput && pwdInput) {
-                idInput.value = identifier;
-                pwdInput.value = pwd;
-                this.showToast(`Đã tự động điền tài khoản: ${identifier}`, 'info');
-                // Auto trigger login
-                const fakeEvent = { preventDefault: () => {} };
-                this.handleLoginSubmit(fakeEvent);
+        async initAuthPage() {
+            const container = document.getElementById('auth-main-container');
+            if (!container || !window.StoreModel) return;
+
+            window.StoreModel.getCustomers();
+            container.textContent = 'Đang kiểm tra tài khoản...';
+            try {
+                const session = await window.StoreModel.refreshCustomerSession();
+                if (session.user) {
+                    this.renderCustomerDashboard(session.user);
+                } else {
+                    this.renderAuthForms('login');
+                }
+            } catch (error) {
+                console.error('Unable to check customer session:', error);
+                this.showToast('Không thể kết nối dịch vụ tài khoản. Vui lòng tải lại trang.', 'error');
+                this.renderAuthForms('login');
             }
         },
 
-        handleLoginSubmit(e) {
+        async handleLoginSubmit(e) {
             if (e) e.preventDefault();
             if (!window.StoreModel) return;
 
@@ -2344,25 +2305,32 @@
                 return;
             }
 
-            const res = window.StoreModel.loginCustomer(identifier, password);
-            if (res.success) {
-                this.showToast(`Chào mừng bạn quay trở lại, ${res.user.name}!`, 'success');
-                
-                // Check if redirected from checkout
-                const params = new URLSearchParams(window.location.search);
-                const redirect = params.get('redirect');
-                if (redirect) {
-                    window.location.href = redirect;
-                    return;
-                }
+            try {
+                const res = await window.StoreModel.loginCustomer(identifier, password);
+                if (res.success) {
+                    this.showToast('Đăng nhập thành công. Chào mừng bạn quay trở lại!', 'success');
 
-                this.renderCustomerDashboard(res.user);
-            } else {
-                this.showToast(res.message, 'error');
+                    const params = new URLSearchParams(window.location.search);
+                    const redirect = params.get('redirect');
+                    if (redirect) {
+                        const destination = new URL(redirect, window.location.href);
+                        if (destination.origin === window.location.origin) {
+                            window.location.href = destination.href;
+                            return;
+                        }
+                    }
+
+                    this.renderCustomerDashboard(res.user);
+                } else {
+                    this.showToast(res.message || 'Đăng nhập thất bại.', 'error');
+                }
+            } catch (error) {
+                console.error('Customer login failed:', error);
+                this.showToast('Không thể kết nối dịch vụ tài khoản. Vui lòng thử lại.', 'error');
             }
         },
 
-        handleRegisterSubmit(e) {
+        async handleRegisterSubmit(e) {
             if (e) e.preventDefault();
             if (!window.StoreModel) return;
 
@@ -2383,8 +2351,8 @@
                 return;
             }
 
-            if (password.length < 6) {
-                this.showToast('Mật khẩu phải chứa ít nhất 6 ký tự!', 'error');
+            if (password.length < 8 || password.length > 72) {
+                this.showToast('Mật khẩu phải chứa từ 8 đến 72 ký tự!', 'error');
                 return;
             }
 
@@ -2393,50 +2361,37 @@
                 return;
             }
 
-            const res = window.StoreModel.registerCustomer({
-                name, phone: cleanPhone, email, password
-            });
-
-            if (res.success) {
-                this.showToast(`Đăng ký thành công! Chào mừng thành viên mới ${res.user.name}.`, 'success');
-                this.renderCustomerDashboard(res.user);
-            } else {
-                this.showToast(res.message, 'error');
+            try {
+                const res = await window.StoreModel.registerCustomer({
+                    name, phone: cleanPhone, email, password
+                });
+                if (res.success) {
+                    this.showToast('Đăng ký thành công. Chào mừng thành viên mới!', 'success');
+                    this.renderCustomerDashboard(res.user);
+                } else {
+                    this.showToast(res.message || 'Đăng ký thất bại.', 'error');
+                }
+            } catch (error) {
+                console.error('Customer registration failed:', error);
+                this.showToast('Không thể kết nối dịch vụ tài khoản. Vui lòng thử lại.', 'error');
             }
         },
 
-        handleForgotPassword() {
-            const emailOrPhone = prompt('Nhập địa chỉ Email hoặc Số điện thoại để nhận mã khôi phục mật khẩu:');
-            if (emailOrPhone && emailOrPhone.trim()) {
-                this.showToast(`Hệ thống đã gửi liên kết đặt lại mật khẩu đến: ${emailOrPhone.trim()}`, 'success');
-            }
-        },
-
-        handleSocialLogin(provider) {
-            this.showToast(`Đang kết nối xác thực an toàn qua ${provider}...`, 'info');
-            setTimeout(() => {
-                const dummyUser = {
-                    id: 'CUS-' + Math.floor(100 + Math.random() * 900),
-                    name: provider === 'Google' ? 'Khách Google' : 'Khách Apple',
-                    email: `user.${provider.toLowerCase()}@vaststudio.vn`,
-                    phone: '0988 123 456',
-                    city: 'Hà Nội',
-                    tier: 'Standard',
-                    ordersCount: 1,
-                    totalSpent: 380000
-                };
-                window.StoreModel.setCurrentUser(dummyUser);
-                this.showToast(`Đăng nhập thành công qua ${provider}!`, 'success');
-                this.renderCustomerDashboard(dummyUser);
-            }, 800);
-        },
-
-        handleLogout() {
+        async handleLogout() {
             if (!confirm('Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?')) return;
             if (window.StoreModel) {
-                window.StoreModel.logoutCustomer();
-                this.showToast('Đã đăng xuất tài khoản thành công', 'info');
-                this.renderAuthForms('login');
+                try {
+                    const res = await window.StoreModel.logoutCustomer();
+                    if (res.success) {
+                        this.showToast('Đã đăng xuất tài khoản thành công', 'info');
+                        this.renderAuthForms('login');
+                    } else {
+                        this.showToast(res.message || 'Đăng xuất thất bại.', 'error');
+                    }
+                } catch (error) {
+                    console.error('Customer logout failed:', error);
+                    this.showToast('Không thể kết nối dịch vụ tài khoản. Vui lòng thử lại.', 'error');
+                }
             }
         },
 
@@ -2460,19 +2415,24 @@
             const initial = (user.name || 'U').trim().charAt(0).toUpperCase();
             const totalOrders = userOrders.length || user.ordersCount || 0;
             const totalSpent = userOrders.reduce((sum, o) => sum + (o.total || 0), 0) || user.totalSpent || 0;
+            const safeName = this.escapeHtml(user.name);
+            const safeEmail = this.escapeHtml(user.email || 'Chưa cập nhật email');
+            const safePhone = this.escapeHtml(user.phone || '');
+            const safeTier = this.escapeHtml(user.tier || 'Thành viên Standard');
+            const safeInitial = this.escapeHtml(initial);
 
             container.innerHTML = `
                 <div class="profile-dashboard-layout">
                     <!-- LEFT SIDEBAR: USER INFO -->
                     <div class="profile-card-base profile-user-card">
-                        <div class="profile-avatar-circle">${initial}</div>
-                        <h2 class="profile-user-name">${user.name}</h2>
+                        <div class="profile-avatar-circle">${safeInitial}</div>
+                        <h2 class="profile-user-name">${safeName}</h2>
                         <div class="profile-user-meta">
-                            <div>${user.email || 'Chưa cập nhật email'}</div>
-                            <div>${user.phone || ''}</div>
+                            <div>${safeEmail}</div>
+                            <div>${safePhone}</div>
                         </div>
                         <div class="profile-tier-badge">
-                            <span>⭐</span> ${user.tier || 'Thành viên Standard'}
+                            <span>⭐</span> ${safeTier}
                         </div>
 
                         <div class="profile-stats-grid">
@@ -2520,14 +2480,16 @@
                                         else if (order.orderStatus === 'completed') statusBadge = '<span class="status-badge status-completed">Đã giao thành công</span>';
                                         else if (order.orderStatus === 'cancelled') statusBadge = '<span class="status-badge status-cancelled">Đã hủy</span>';
 
-                                        const itemsSummary = (order.items || []).map(i => `${i.name} (x${i.quantity})`).join(', ');
+                                        const itemsSummary = (order.items || []).map(i => `${this.escapeHtml(i.name)} (x${this.escapeHtml(i.quantity)})`).join(', ');
+                                        const orderId = this.escapeHtml(order.id);
+                                        const orderDate = this.escapeHtml(order.createdAt || '');
 
                                         return `
                                             <div class="profile-order-card">
                                                 <div class="profile-order-top">
                                                     <div>
-                                                        <span class="profile-order-id">${order.id}</span>
-                                                        <span style="font-size:0.75rem; color:var(--text-muted); margin-left:8px;">${order.createdAt || ''}</span>
+                                                        <span class="profile-order-id">${orderId}</span>
+                                                        <span style="font-size:0.75rem; color:var(--text-muted); margin-left:8px;">${orderDate}</span>
                                                     </div>
                                                     <div>${statusBadge}</div>
                                                 </div>
@@ -2541,7 +2503,7 @@
                                                             ${this.formatMoney(order.total)}
                                                         </strong>
                                                     </div>
-                                                    <a href="order-tracking.php?order=${order.id}" class="btn-card-addcart" style="text-decoration:none; padding:6px 14px; font-size:0.8rem;">
+                                                    <a href="order-tracking.php?order=${encodeURIComponent(order.id)}" class="btn-card-addcart" style="text-decoration:none; padding:6px 14px; font-size:0.8rem;">
                                                         Theo dõi đơn
                                                     </a>
                                                 </div>
@@ -2592,19 +2554,19 @@
                                 <div class="checkout-form-grid">
                                     <div>
                                         <label class="checkout-label">Họ và tên</label>
-                                        <input type="text" id="prof-name" class="checkout-input" value="${user.name || ''}" required>
+                                        <input type="text" id="prof-name" class="checkout-input" value="${safeName}" required>
                                     </div>
                                     <div>
                                         <label class="checkout-label">Số điện thoại</label>
-                                        <input type="tel" id="prof-phone" class="checkout-input" value="${user.phone || ''}" required>
+                                        <input type="tel" id="prof-phone" class="checkout-input" value="${safePhone}" required>
                                     </div>
                                     <div>
                                         <label class="checkout-label">Email</label>
-                                        <input type="email" id="prof-email" class="checkout-input" value="${user.email || ''}" required>
+                                        <input type="email" id="prof-email" class="checkout-input" value="${this.escapeHtml(user.email || '')}" required>
                                     </div>
                                     <div>
                                         <label class="checkout-label">Tỉnh / Thành phố sinh sống</label>
-                                        <input type="text" id="prof-city" class="checkout-input" value="${user.city || 'Hà Nội'}">
+                                        <input type="text" id="prof-city" class="checkout-input" value="${this.escapeHtml(user.city || 'Hà Nội')}">
                                     </div>
                                 </div>
 

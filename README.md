@@ -28,10 +28,12 @@ d:\vaststudio\
 ├── MVC\
 │   ├── controllers\
 │   │   ├── FrontController.php # [C] Điều phối các trang
+│   │   ├── CustomerAuthController.php # [C] API đăng nhập/đăng ký khách hàng
 │   │   ├── AdminPageController.php # [C] Chuẩn bị trang quản trị
 │   │   └── AdminController.php # [C] Xử lý thao tác quản trị
 │   ├── router.php              # Router cho PHP built-in server
 │   ├── models\
+│   │   ├── CustomerAuthModel.php # [M] Tài khoản khách hàng và mật khẩu
 │   │   └── AdminStoreModel.php # [M] Truy vấn dữ liệu quản trị MySQL
 │   └── views\
 │       ├── admin.php           # [V] Giao diện quản trị PHP
@@ -83,7 +85,7 @@ d:\vaststudio\
    - Đơn hàng được tạo kèm mã `VAST-XXXX` (VD: `VAST-9826`).
    - Tồn kho sản phẩm tự động giảm, số lượt bán tự động tăng.
    - Khách hàng có thể sao chép mã đơn và vào ngay `order-tracking.php` để theo dõi tiến độ giao hàng!
-   - Storefront hiện dùng LocalStorage riêng; đồng bộ dữ liệu giữa storefront và MySQL chưa được triển khai.
+   - Đăng ký/đăng nhập khách hàng dùng tài khoản MySQL, mật khẩu được băm và phiên được giữ bằng PHP session. Giỏ hàng, đơn hàng demo và một số dữ liệu storefront khác hiện vẫn dùng LocalStorage, chưa đồng bộ với MySQL.
 3. **Mã giảm giá (Coupons)**:
    - Các mã ưu đãi: `VASTWELCOME` (giảm 100k), `FREESHIP` (freeship 300k), `SUMMER50K` (-50k), `VIPMEMBER` (giảm 15%) áp dụng tức thì tại giỏ hàng.
 
@@ -100,6 +102,7 @@ npm start
 ```
 - Bật MySQL trong Laragon trước. `setup.php` sẽ tạo schema trên database mới hoặc nhận diện database cũ và giữ nguyên các bảng/dữ liệu hiện có.
 - Truy cập từ `localhost`/`127.0.0.1` không cần đăng nhập. Khi truy cập từ máy khác, tạo tài khoản quản trị bằng cách cấp `ADMIN_INITIAL_PASSWORD` qua môi trường (tối thiểu 12 ký tự), sau đó chạy `php database/create-admin.php "VAST Admin" admin@example.com`. Tài khoản không có role `admin` không thể vào trang quản trị.
+- Khách hàng đăng ký/đăng nhập tại `auth.php` bằng email hoặc số điện thoại; mật khẩu đăng ký cần tối thiểu 8 ký tự. Đảm bảo đã chạy `php database/setup.php` và bật MySQL.
 - Có thể cấu hình kết nối qua `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` (mặc định: `127.0.0.1:3306`, `vaststudio`, `root`, mật khẩu rỗng).
 - **Trang chủ Khách hàng**: [http://localhost:3000](http://localhost:3000)
 - **Trang danh sách sản phẩm**: [http://localhost:3000/products.php](http://localhost:3000/products.php)

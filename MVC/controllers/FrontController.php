@@ -29,6 +29,23 @@ class FrontController
             return;
         }
 
+        if ($route === 'auth-api') {
+            require_once __DIR__ . '/../../includes/config.php';
+            require_once __DIR__ . '/CustomerAuthController.php';
+            try {
+                (new CustomerAuthController(new CustomerAuthModel(getDatabaseConnection())))->handleRequest();
+            } catch (PDOException $exception) {
+                error_log('Customer authentication database connection error: ' . $exception->getMessage());
+                http_response_code(503);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Dịch vụ tài khoản hiện không khả dụng. Vui lòng thử lại sau.',
+                ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            }
+            return;
+        }
+
         if (!isset(self::STOREFRONT_VIEWS[$route])) {
             http_response_code(404);
             echo 'Không tìm thấy trang.';
