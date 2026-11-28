@@ -52,8 +52,9 @@ try {
                     PRIMARY KEY (setting_key)
                 ) ENGINE=InnoDB'
             );
-            fwrite(STDOUT, "Connected to {$database}; existing tables and records were preserved.\n");
-            fwrite(STDOUT, "Detected the existing store schema; the PHP admin will use its current products and orders.\n");
+            require_once __DIR__ . '/../MVC/models/OrderSchemaMigrator.php';
+            OrderSchemaMigrator::ensureSchema($pdo);
+            fwrite(STDOUT, "Connected to {$database}; existing tables and records were preserved and order workflow tables verified.\n");
             exit(0);
         }
     }
@@ -63,8 +64,10 @@ try {
         throw new RuntimeException("Unable to read schema file: {$schemaFile}");
     }
     $pdo->exec($schema);
+    require_once __DIR__ . '/../MVC/models/OrderSchemaMigrator.php';
+    OrderSchemaMigrator::ensureSchema($pdo);
 
-    echo "Database {$database} and tables created successfully.\n";
+    echo "Database {$database} and tables created/updated successfully.\n";
 } catch (PDOException $exception) {
     fwrite(STDERR, "Database setup failed: " . $exception->getMessage() . "\n");
     exit(1);

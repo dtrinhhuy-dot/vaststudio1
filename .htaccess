@@ -4,4 +4,4 @@ RewriteEngine On
 RewriteRule ^MVC/router\.php$ - [L]
 RewriteRule ^MVC(?:/|$) - [F,L]
 RewriteRule ^$ MVC/router.php [L]
-RewriteRule ^(index|products|product-detail|order-tracking|about|contact|auth|checkout|admin|home|shop)\.php$ MVC/router.php [QSA,L]
+RewriteRule ^(index|products|product-detail|order-tracking|about|contact|auth|login|register|checkout|admin|api|home|shop)\.php$ MVC/router.php [QSA,L]

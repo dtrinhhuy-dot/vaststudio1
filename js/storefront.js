@@ -66,6 +66,12 @@
 
         loadData() {
             if (window.StoreModel) {
+                if (typeof window.__VAST_SESSION_USER__ !== 'undefined') {
+                    window.StoreModel.setCurrentUser(window.__VAST_SESSION_USER__);
+                }
+                if (window.__VAST_LIVE_CATALOG__) {
+                    window.StoreModel.syncLiveCatalog(window.__VAST_LIVE_CATALOG__);
+                }
                 this.state.products = window.StoreModel.getProducts();
                 this.state.collections = window.StoreModel.getCollections();
                 this.state.coupons = window.StoreModel.getCoupons();
@@ -876,25 +882,56 @@
         },
 
         selectPDPSize(size, btn) {
+            if (btn && btn.disabled) return;
             this.state.pdpSelectedSize = size;
             const label = document.getElementById('pdp-selected-size-label');
             if (label) label.textContent = size;
 
             btn.parentElement.querySelectorAll('.quickview-pill-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            this.syncPDPVariantStock();
         },
 
         selectPDPColor(color, btn) {
+            if (btn && btn.disabled) return;
             this.state.pdpSelectedColor = color;
             const label = document.getElementById('pdp-selected-color-label');
             if (label) label.textContent = color;
 
             btn.parentElement.querySelectorAll('.quickview-pill-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            this.syncPDPVariantStock();
+        },
+
+        syncPDPVariantStock() {
+            const product = this.state.pdpProduct;
+            if (!product || !window.StoreModel) return;
+            const stock = window.StoreModel.getVariantStock(product, this.state.pdpSelectedSize, this.state.pdpSelectedColor);
+            const stockEl = document.getElementById('pdp-stock-status');
+            if (stockEl) {
+                stockEl.innerHTML = stock > 0
+                    ? `<span style="color:var(--store-emerald); font-weight:700;">● Còn ${stock} sản phẩm (Size ${this.state.pdpSelectedSize} • ${this.state.pdpSelectedColor})</span>`
+                    : `<span style="color:var(--store-red); font-weight:700;">● Tạm hết hàng phân loại này</span>`;
+            }
+            if (stock > 0 && this.state.pdpQty > stock) {
+                this.state.pdpQty = stock;
+                const display = document.getElementById('pdp-qty-display');
+                if (display) display.textContent = this.state.pdpQty;
+            }
         },
 
         adjustPDPQty(delta) {
-            this.state.pdpQty = Math.max(1, this.state.pdpQty + delta);
+            const product = this.state.pdpProduct;
+            const maxStock = product && window.StoreModel
+                ? window.StoreModel.getVariantStock(product, this.state.pdpSelectedSize, this.state.pdpSelectedColor)
+                : 99;
+            const next = Math.max(1, this.state.pdpQty + delta);
+            if (maxStock > 0 && next > maxStock) {
+                this.showToast(`Số lượng tối đa cho phân loại này là ${maxStock}`, 'error');
+                this.state.pdpQty = maxStock;
+            } else {
+                this.state.pdpQty = next;
+            }
             const display = document.getElementById('pdp-qty-display');
             if (display) display.textContent = this.state.pdpQty;
         },
@@ -902,6 +939,15 @@
         submitPDPAddToCart() {
             const product = this.state.pdpProduct;
             if (!product || !window.StoreModel) return;
+            const maxStock = window.StoreModel.getVariantStock(product, this.state.pdpSelectedSize, this.state.pdpSelectedColor);
+            if (maxStock <= 0) {
+                this.showToast('Phân loại bạn chọn đã hết hàng!', 'error');
+                return;
+            }
+            if (this.state.pdpQty > maxStock) {
+                this.showToast(`Chỉ còn ${maxStock} sản phẩm cho phân loại này!`, 'error');
+                return;
+            }
 
             window.StoreModel.addToCart(
                 product,
@@ -917,6 +963,11 @@
         submitPDPBuyNow() {
             const product = this.state.pdpProduct;
             if (!product || !window.StoreModel) return;
+            const maxStock = window.StoreModel.getVariantStock(product, this.state.pdpSelectedSize, this.state.pdpSelectedColor);
+            if (maxStock <= 0 || this.state.pdpQty > maxStock) {
+                this.showToast(maxStock <= 0 ? 'Phân loại bạn chọn đã hết hàng!' : `Chỉ còn ${maxStock} sản phẩm cho phân loại này!`, 'error');
+                return;
+            }
 
             window.StoreModel.addToCart(
                 product,
@@ -1048,20 +1099,26 @@
             this.searchOrder(code);
         },
 
-        searchOrder(query) {
-            if (!window.StoreModel) return;
+        async searchOrder(query) {
             const container = document.getElementById('tracking-result-container');
             if (!container) return;
 
-            const q = query.trim().toUpperCase();
-            const allOrders = window.StoreModel.getOrders();
+            const q = query.trim();
+            container.innerHTML = `<div class="empty-shop-state" style="margin-top:20px;"><p style="color:var(--text-muted);margin:0;">Đang tra cứu đơn hàng...</p></div>`;
 
-            // Match by Order ID or Phone number
-            let order = allOrders.find(o => o.id.toUpperCase() === q);
-            if (!order) {
-                // Try phone search
-                const cleanQ = q.replace(/\s+/g, '');
-                order = allOrders.find(o => (o.customerPhone || '').replace(/\s+/g, '').includes(cleanQ));
+            let order = null;
+            try {
+                const res = await fetch(`api.php?action=order_track&q=${encodeURIComponent(q)}`);
+                const payload = await res.json();
+                if (payload && payload.ok && payload.order) {
+                    order = payload.order;
+                }
+            } catch (err) {
+                if (window.StoreModel) {
+                    const allOrders = window.StoreModel.getOrders();
+                    const up = q.toUpperCase();
+                    order = allOrders.find(o => o.id.toUpperCase() === up);
+                }
             }
 
             if (!order) {
@@ -1077,33 +1134,45 @@
                 return;
             }
 
-            // Render order details
             this.renderTrackingDetails(order, container);
         },
 
         renderTrackingDetails(order, container) {
-            // Status mapping & step calculation
-            let stepIndex = 1;
-            let statusBadge = '<span class="badge badge-warning">Chờ xác nhận</span>';
-
-            if (order.orderStatus === 'pending') {
-                stepIndex = 1;
-                statusBadge = '<span class="badge badge-warning">Chờ xử lý</span>';
-            } else if (order.orderStatus === 'processing') {
-                stepIndex = 2;
-                statusBadge = '<span class="badge badge-info">Đang đóng gói</span>';
-            } else if (order.orderStatus === 'shipping') {
-                stepIndex = 3;
-                statusBadge = '<span class="badge badge-purple">Đang vận chuyển</span>';
-            } else if (order.orderStatus === 'completed') {
-                stepIndex = 4;
-                statusBadge = '<span class="badge badge-success">Giao thành công</span>';
-            } else if (order.orderStatus === 'cancelled') {
-                stepIndex = 0;
-                statusBadge = '<span class="badge badge-danger">Đã hủy đơn</span>';
-            }
-
-            const canCancel = order.orderStatus === 'pending';
+            const statusStyleMap = {
+                pending: ['Chờ xác nhận', 'badge-warning', 1],
+                confirmed: ['Đã xác nhận', 'badge-info', 2],
+                processing: ['Đang xử lý', 'badge-purple', 2],
+                shipping: ['Đang giao hàng', 'badge-info', 3],
+                delivered: ['Giao hàng thành công', 'badge-success', 4],
+                awaiting_confirmation: ['Chờ xác nhận nhận hàng', 'badge-warning', 4],
+                completed: ['Hoàn tất', 'badge-success', 5],
+                cancel_requested: ['Yêu cầu hủy', 'badge-danger', 1],
+                cancelled: ['Đã hủy', 'badge-danger', 0],
+                return_requested: ['Yêu cầu đổi trả', 'badge-warning', 4],
+                return_awaiting_shipment: ['Chờ gửi hàng đổi trả', 'badge-purple', 4],
+                return_received: ['Đã nhận hàng đổi trả', 'badge-info', 4],
+                return_completed: ['Đổi trả hoàn tất', 'badge-success', 5]
+            };
+            const stInfo = statusStyleMap[order.orderStatus] || [order.statusLabel || order.orderStatus, 'badge-warning', 1];
+            const statusBadge = `<span class="badge ${stInfo[1]}">${stInfo[0]}</span>`;
+            const stepIndex = stInfo[2];
+            const historyHtml = Array.isArray(order.history) && order.history.length > 0
+                ? `<div style="padding:18px 32px; border-top:1px solid var(--border-subtle);">
+                        <h4 style="font-family:var(--store-font-heading); margin:0 0 12px; font-size:0.98rem;">Lịch sử xử lý đơn hàng</h4>
+                        <div style="display:grid; gap:8px;">
+                            ${order.history.map(h => `
+                                <div style="display:flex; justify-content:space-between; gap:12px; font-size:0.82rem; padding:8px 12px; background:var(--bg-subtle); border-radius:var(--radius-sm);">
+                                    <div>
+                                        <strong style="color:var(--text-primary);">${h.statusLabel || h.status}</strong>
+                                        <span style="color:var(--text-muted);"> • ${h.actor || 'Hệ thống'}</span>
+                                        ${h.note ? `<div style="color:var(--text-secondary); margin-top:2px;">${h.note}</div>` : ''}
+                                    </div>
+                                    <span style="color:var(--text-muted); white-space:nowrap;">${h.createdAt || ''}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                   </div>`
+                : '';
 
             container.innerHTML = `
                 <div class="tracking-result-box">
@@ -1115,51 +1184,48 @@
                             </h2>
                             <span style="font-size:0.82rem; color:var(--text-muted);">Ngày đặt: ${order.createdAt}</span>
                         </div>
-                        <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                             ${statusBadge}
-                            ${canCancel ? `
-                                <button class="btn-reset-filters" style="width:auto; padding:6px 14px;" onclick="Storefront.handleCancelOrder('${order.id}')">
-                                    Hủy đơn này
-                                </button>
-                            ` : ''}
+                            <a href="auth.php?detail_order=${encodeURIComponent(order.id)}" class="btn-reset-filters" style="width:auto; padding:6px 14px; text-decoration:none;">
+                                Thao tác trong Tài khoản
+                            </a>
                         </div>
                     </div>
 
                     ${order.orderStatus !== 'cancelled' ? `
-                        <!-- Timeline Stages -->
                         <div class="tracking-timeline-box">
                             <div class="timeline-steps-track">
                                 <div class="timeline-step-item ${stepIndex >= 1 ? (stepIndex > 1 ? 'completed' : 'active') : ''}">
                                     <div class="step-circle">${stepIndex > 1 ? '✓' : '1'}</div>
                                     <span class="step-label">Đặt hàng</span>
-                                    <span class="step-time">Đã ghi nhận</span>
+                                    <span class="step-time">Chờ xác nhận</span>
                                 </div>
                                 <div class="timeline-step-item ${stepIndex >= 2 ? (stepIndex > 2 ? 'completed' : 'active') : ''}">
                                     <div class="step-circle">${stepIndex > 2 ? '✓' : '2'}</div>
-                                    <span class="step-label">Chuẩn bị kiện</span>
+                                    <span class="step-label">Xác nhận &amp; Xử lý</span>
                                     <span class="step-time">Kho VAST</span>
                                 </div>
                                 <div class="timeline-step-item ${stepIndex >= 3 ? (stepIndex > 3 ? 'completed' : 'active') : ''}">
                                     <div class="step-circle">${stepIndex > 3 ? '✓' : '3'}</div>
                                     <span class="step-label">Đang giao</span>
-                                    <span class="step-time">Giao hỏa tốc</span>
+                                    <span class="step-time">Đơn vị vận chuyển</span>
                                 </div>
-                                <div class="timeline-step-item ${stepIndex >= 4 ? 'completed' : ''}">
-                                    <div class="step-circle">4</div>
-                                    <span class="step-label">Thành công</span>
-                                    <span class="step-time">Đã nhận hàng</span>
+                                <div class="timeline-step-item ${stepIndex >= 4 ? (stepIndex > 4 ? 'completed' : 'active') : ''}">
+                                    <div class="step-circle">${stepIndex > 4 ? '✓' : '4'}</div>
+                                    <span class="step-label">Giao thành công</span>
+                                    <span class="step-time">${stepIndex >= 5 ? 'Khách đã xác nhận' : 'Chờ khách xác nhận'}</span>
                                 </div>
                             </div>
                         </div>
                     ` : `
                         <div style="padding:20px 32px; background:rgba(239,68,68,0.1); color:var(--store-red); font-size:0.9rem; font-weight:600;">
-                            Đơn hàng này đã bị hủy. Nếu có bất kỳ thắc mắc nào, vui lòng liên hệ hotline 0988.123.456 để được hỗ trợ.
+                            Đơn hàng này đã bị hủy.${order.cancelReason ? ' Lý do: ' + order.cancelReason : ''}
                         </div>
                     `}
 
-                    <!-- Body Details -->
+                    ${historyHtml}
+
                     <div class="tracking-body-grid">
-                        <!-- Items -->
                         <div>
                             <h4 style="font-family:var(--store-font-heading); margin:0 0 16px; font-size:1.05rem;">Sản phẩm trong kiện (${(order.items || []).length})</h4>
                             <div style="display:flex; flex-direction:column; gap:14px;">
@@ -1169,7 +1235,7 @@
                                         <div style="flex:1;">
                                             <h5 style="margin:0 0 4px; font-size:0.9rem; color:var(--text-primary);">${item.name}</h5>
                                             <div style="font-size:0.78rem; color:var(--text-muted);">
-                                                Size: <strong>${item.size}</strong> • Màu: <strong>${item.color}</strong> • SL: <strong>x${item.quantity}</strong>
+                                                ${item.sku ? `SKU: <strong>${item.sku}</strong> • ` : ''}Size: <strong>${item.size || '—'}</strong> • Màu: <strong>${item.color || '—'}</strong> • SL: <strong>×${item.quantity}</strong>
                                             </div>
                                             <div style="font-family:var(--store-font-heading); font-weight:800; font-size:0.92rem; margin-top:2px;">
                                                 ${this.formatMoney(item.price * item.quantity)}
@@ -1180,7 +1246,6 @@
                             </div>
                         </div>
 
-                        <!-- Customer & Financial -->
                         <div style="background:var(--bg-subtle); border-radius:var(--radius-md); padding:20px; display:flex; flex-direction:column; gap:16px;">
                             <div>
                                 <span style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Người nhận hàng</span>
@@ -1785,20 +1850,32 @@
             this.applyCouponByCode(code);
         },
 
-        applyCouponByCode(code) {
+        async applyCouponByCode(code) {
             if (!code) {
                 this.showToast('Vui lòng nhập mã giảm giá', 'error');
                 return;
             }
             const subtotal = window.StoreModel.getCartSubtotal();
-            const res = window.StoreModel.validateCoupon(code, subtotal);
-            if (!res.valid) {
-                this.showToast(res.message, 'error');
-                return;
+            try {
+                const response = await fetch(`api.php?action=coupon_validate&code=${encodeURIComponent(code)}&subtotal=${encodeURIComponent(subtotal)}`);
+                const res = await response.json();
+                if (!res.valid) {
+                    this.showToast(res.message || 'Mã giảm giá không hợp lệ', 'error');
+                    return;
+                }
+                this.state.appliedCoupon = res.coupon;
+                this.showToast(`Áp dụng mã ${res.coupon.code} thành công (-${this.formatMoney(res.discount)})!`, 'success');
+                this.updateCheckoutSummary();
+            } catch (err) {
+                const res = window.StoreModel.validateCoupon(code, subtotal);
+                if (!res.valid) {
+                    this.showToast(res.message, 'error');
+                    return;
+                }
+                this.state.appliedCoupon = res.coupon;
+                this.showToast(`Áp dụng mã ${res.coupon.code} thành công (-${this.formatMoney(res.discount)})!`, 'success');
+                this.updateCheckoutSummary();
             }
-            this.state.appliedCoupon = res.coupon;
-            this.showToast(`Áp dụng mã ${res.coupon.code} thành công (-${this.formatMoney(res.discount)})!`, 'success');
-            this.updateCheckoutSummary();
         },
 
         removeCheckoutCoupon() {
@@ -1813,7 +1890,7 @@
             // Optional hook for city specific adjustments
         },
 
-        submitCheckoutPage(e) {
+        async submitCheckoutPage(e) {
             if (e) e.preventDefault();
             if (!window.StoreModel) return;
 
@@ -1832,10 +1909,9 @@
                 return;
             }
 
-            // Simple VN Phone validation (starts with 0, 10 digits)
             const cleanPhone = phone.replace(/[\s.-]/g, '');
-            if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(cleanPhone)) {
-                this.showToast('Số điện thoại không hợp lệ (cần 10 chữ số, ví dụ 0912345678)!', 'error');
+            if (!/^0[0-9]{9,10}$/.test(cleanPhone)) {
+                this.showToast('Số điện thoại không hợp lệ (cần 10–11 chữ số bắt đầu bằng 0)!', 'error');
                 document.getElementById('checkout-phone')?.focus();
                 return;
             }
@@ -1847,60 +1923,60 @@
                 return;
             }
 
-            const subtotal = window.StoreModel.getCartSubtotal();
-            const freeShipThreshold = 500000;
-            const shippingFee = this.state.checkoutShipping === 'express' ? 50000 : ((subtotal >= freeShipThreshold || subtotal === 0) ? 0 : 30000);
+            const fullAddress = `${addressDetail}, Phường/Xã ${ward}, Quận/Huyện ${district}, ${city}`;
+            const shippingMethodName = this.state.checkoutShipping === 'express'
+                ? 'Giao Hỏa Tốc Express (2-4 giờ)'
+                : 'Giao Tiêu Chuẩn (2-3 ngày)';
+            const paymentCode = (this.state.checkoutPayment || 'COD').toLowerCase();
 
-            let discount = 0;
-            let couponCode = null;
-            if (this.state.appliedCoupon) {
-                const val = window.StoreModel.validateCoupon(this.state.appliedCoupon.code, subtotal);
-                if (val.valid) {
-                    discount = val.discount;
-                    couponCode = this.state.appliedCoupon.code;
+            const submitBtn = document.getElementById('btn-submit-checkout');
+            const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Đang tạo đơn hàng...';
+            }
+
+            try {
+                const response = await fetch('api.php?action=checkout_create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customerName: name,
+                        customerPhone: cleanPhone,
+                        customerEmail: email,
+                        shippingAddress: fullAddress,
+                        shippingType: this.state.checkoutShipping || 'standard',
+                        shippingMethod: shippingMethodName,
+                        paymentCode: paymentCode,
+                        couponCode: this.state.appliedCoupon ? this.state.appliedCoupon.code : '',
+                        note: note,
+                        items: cart
+                    })
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.ok || !payload.order) {
+                    throw new Error(payload.message || 'Không thể tạo đơn hàng.');
+                }
+
+                if (saveInfo) {
+                    localStorage.setItem('vast_customer_info', JSON.stringify({
+                        name, phone: cleanPhone, email, city, district, ward, addressDetail, note
+                    }));
+                }
+
+                window.StoreModel.clearCart();
+                this.state.appliedCoupon = null;
+
+                this.renderCheckoutSuccess(payload.order, fullAddress);
+                this.showToast(`Đặt hàng thành công! Mã đơn: ${payload.order.id}`, 'success');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (err) {
+                this.showToast(err.message || 'Đặt hàng thất bại, vui lòng thử lại.', 'error');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origBtnHtml;
                 }
             }
-
-            const total = Math.max(0, subtotal - discount + shippingFee);
-            const fullAddress = `${addressDetail}, Phường/Xã ${ward}, Quận/Huyện ${district}, ${city}`;
-
-            let paymentMethodName = 'COD (Thanh toán khi nhận hàng)';
-            if (this.state.checkoutPayment === 'QR') paymentMethodName = 'Chuyển khoản VietQR (Vietcombank)';
-            else if (this.state.checkoutPayment === 'MOMO') paymentMethodName = 'Ví điện tử MoMo';
-            else if (this.state.checkoutPayment === 'CARD') paymentMethodName = 'Thẻ tín dụng Quốc tế (Visa/Mastercard)';
-
-            const shippingMethodName = this.state.checkoutShipping === 'express' ? 'Giao Hỏa Tốc Express (2-4 giờ)' : 'Giao Tiêu Chuẩn (2-3 ngày)';
-
-            // Create order in StoreModel
-            const newOrder = window.StoreModel.createOrder({
-                customerName: name,
-                customerPhone: cleanPhone,
-                customerEmail: email,
-                shippingAddress: fullAddress,
-                shippingMethod: shippingMethodName,
-                note: note,
-                items: cart,
-                subtotal: subtotal,
-                shippingFee: shippingFee,
-                discount: discount,
-                couponCode: couponCode,
-                total: total,
-                paymentMethod: paymentMethodName
-            });
-
-            // Save customer info if requested
-            if (saveInfo) {
-                localStorage.setItem('vast_customer_info', JSON.stringify({
-                    name, phone: cleanPhone, email, city, district, ward, addressDetail, note
-                }));
-            }
-
-            this.state.appliedCoupon = null;
-
-            // Render Success Screen
-            this.renderCheckoutSuccess(newOrder, fullAddress);
-            this.showToast(`Đặt hàng thành công! Mã đơn: ${newOrder.id}`, 'success');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         },
 
         renderCheckoutSuccess(order, fullAddress) {
@@ -2092,6 +2168,9 @@
         initAuthPage() {
             const container = document.getElementById('auth-main-container');
             if (!container) return;
+            if (container.dataset.ssr === '1') {
+                return;
+            }
             if (!window.StoreModel) return;
 
             const currentUser = window.StoreModel.getCurrentUser();
@@ -2740,11 +2819,46 @@
             const product = window.StoreModel.getProductById(productId);
             if (!product) return;
 
-            const size = product.sizes ? product.sizes[0] : 'M';
-            const color = product.colors ? product.colors[0] : 'Tiêu chuẩn';
+            const sizes = Array.isArray(product.sizes) && product.sizes.length ? product.sizes : ['M'];
+            const colors = Array.isArray(product.colors) && product.colors.length ? product.colors : ['Tiêu chuẩn'];
 
-            window.StoreModel.addToCart(product, size, color, 1);
-            this.showToast(`Đã thêm "${product.name}" vào giỏ hàng`, 'success');
+            let chosenSize = sizes[0];
+            let chosenColor = colors[0];
+            let availableStock = window.StoreModel.getVariantStock(product, chosenSize, chosenColor);
+
+            if (availableStock <= 0) {
+                let found = false;
+                for (const c of colors) {
+                    for (const s of sizes) {
+                        const st = window.StoreModel.getVariantStock(product, s, c);
+                        if (st > 0) {
+                            chosenSize = s;
+                            chosenColor = c;
+                            availableStock = st;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
+            }
+
+            if (availableStock <= 0) {
+                this.showToast(`Sản phẩm "${product.name}" hiện đã hết hàng`, 'error');
+                return;
+            }
+
+            const existing = window.StoreModel.getCart().find(
+                item => item.id === product.id && item.size === chosenSize && item.color === chosenColor
+            );
+            const inCartQty = existing ? Number(existing.quantity || 0) : 0;
+            if (inCartQty + 1 > availableStock) {
+                this.showToast(`Biến thể ${chosenColor} / ${chosenSize} chỉ còn ${availableStock} sản phẩm trong kho`, 'error');
+                return;
+            }
+
+            window.StoreModel.addToCart(product, chosenSize, chosenColor, 1);
+            this.showToast(`Đã thêm "${product.name}" (${chosenColor} / ${chosenSize}) vào giỏ hàng`, 'success');
             this.openCart();
         },
 
@@ -3006,58 +3120,84 @@
         },
 
         // ======================================================================
-        // QUICK VIEW MODAL
+        // QUICK VIEW MODAL (LIVE MYSQL PRODUCT & VARIANT STOCK)
         // ======================================================================
-        openQuickView(productId) {
+        async openQuickView(productId) {
             if (!window.StoreModel) return;
-            const product = window.StoreModel.getProductById(productId);
-            if (!product) return;
-
-            this.state.quickViewProduct = product;
-            this.state.selectedSize = product.sizes ? product.sizes[0] : 'M';
-            this.state.selectedColor = product.colors ? product.colors[0] : 'Tiêu chuẩn';
-            this.state.quickViewQty = 1;
-
+            let product = window.StoreModel.getProductById(productId);
             const modal = document.getElementById('quickview-modal-overlay');
             const dialog = document.getElementById('quickview-dialog');
             if (!modal || !dialog) return;
 
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            dialog.innerHTML = `<button class="quickview-close-btn" onclick="Storefront.closeQuickView()">×</button><div style="padding:48px; text-align:center; width:100%; color:var(--text-muted);">Đang tải thông tin sản phẩm từ kho...</div>`;
+
+            try {
+                const res = await fetch(`api.php?action=product_quickview&id=${encodeURIComponent(productId)}`);
+                const payload = await res.json();
+                if (payload && payload.ok && payload.product) {
+                    product = payload.product;
+                }
+            } catch (err) {}
+
+            if (!product) {
+                dialog.innerHTML = `<button class="quickview-close-btn" onclick="Storefront.closeQuickView()">×</button><div style="padding:48px; text-align:center; width:100%;">Không tìm thấy sản phẩm.</div>`;
+                return;
+            }
+
+            this.state.quickViewProduct = product;
+            const variants = Array.isArray(product.variants) ? product.variants : [];
+            const firstInStock = variants.find(v => Number(v.stock) > 0);
+            this.state.selectedColor = firstInStock ? firstInStock.color : (product.colors ? product.colors[0] : 'Tiêu chuẩn');
+            this.state.selectedSize = firstInStock ? firstInStock.size : (product.sizes ? product.sizes[0] : 'M');
+            this.state.quickViewQty = 1;
+
+            const gallery = Array.isArray(product.gallery) && product.gallery.length > 0
+                ? product.gallery
+                : [product.image].filter(Boolean);
             const hasSale = product.originalPrice && product.originalPrice > product.price;
+            const discountPct = hasSale ? Math.round((1 - product.price / product.originalPrice) * 100) : 0;
 
             dialog.innerHTML = `
                 <button class="quickview-close-btn" onclick="Storefront.closeQuickView()">×</button>
-                
-                <div class="quickview-media">
-                    <img src="${product.image}" alt="${product.name}" 
-                         onerror="this.onerror=null; this.src='${product.fallbackImage || ''}'">
+
+                <div class="quickview-media-col">
+                    <div class="quickview-media">
+                        <img id="qv-main-img" src="${gallery[0] || product.image}" alt="${product.name}"
+                             onerror="this.onerror=null; this.src='${product.fallbackImage || ''}'">
+                    </div>
+                    ${gallery.length > 1 ? `
+                        <div class="quickview-thumbs">
+                            ${gallery.map((src, i) => `
+                                <button type="button" class="quickview-thumb-btn ${i === 0 ? 'active' : ''}" onclick="Storefront.switchQuickViewImage('${src}', this)">
+                                    <img src="${src}" alt="${product.name}">
+                                </button>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>
 
                 <div class="quickview-body">
                     <div>
-                        <span class="card-category">${product.category} | ${product.collection}</span>
+                        <span class="card-category">${product.category || 'Thời trang'}${product.collection ? ' | ' + product.collection : ''}</span>
                         <h2 class="quickview-title">${product.name}</h2>
-                        <span class="quickview-sku">SKU: ${product.sku}</span>
+                        <span class="quickview-sku">SKU: ${product.sku || 'VAST'}</span>
                     </div>
 
-                    <div class="card-price-row" style="margin:0;">
+                    <div class="card-price-row" style="margin:0; align-items:center; gap:10px;">
                         <span class="card-price-current" style="font-size:1.4rem;">${this.formatMoney(product.price)}</span>
                         ${hasSale ? `<span class="card-price-old" style="font-size:1rem;">${this.formatMoney(product.originalPrice)}</span>` : ''}
+                        ${discountPct > 0 ? `<span class="quickview-discount-pill">-${discountPct}%</span>` : ''}
                     </div>
 
-                    <p class="quickview-desc">${product.description}</p>
+                    <p class="quickview-desc">${product.description || ''}</p>
 
                     <div class="quickview-option-group">
                         <span class="option-group-label">
                             Màu sắc: <strong id="qv-selected-color-label">${this.state.selectedColor}</strong>
                         </span>
-                        <div class="quickview-pills-row">
-                            ${(product.colors || []).map((c, i) => `
-                                <button class="quickview-pill-btn ${i === 0 ? 'active' : ''}" 
-                                        onclick="Storefront.selectQuickViewColor('${c}', this)">
-                                    ${c}
-                                </button>
-                            `).join('')}
-                        </div>
+                        <div class="quickview-pills-row" id="qv-colors-row"></div>
                     </div>
 
                     <div class="quickview-option-group">
@@ -3067,39 +3207,90 @@
                                 Bảng chọn size
                             </a>
                         </div>
-                        <div class="quickview-pills-row">
-                            ${(product.sizes || []).map((s, i) => `
-                                <button class="quickview-pill-btn ${i === 0 ? 'active' : ''}" 
-                                        onclick="Storefront.selectQuickViewSize('${s}', this)">
-                                    ${s}
-                                </button>
-                            `).join('')}
-                        </div>
+                        <div class="quickview-pills-row" id="qv-sizes-row"></div>
                     </div>
 
-                    <div style="display:flex; gap:12px; align-items:center; margin-top:8px;">
+                    <div class="quickview-stock-hint" id="qv-stock-status">Đang kiểm tra tồn kho...</div>
+
+                    <div style="display:flex; gap:12px; align-items:center; margin-top:4px;">
                         <div class="qty-control" style="height:44px;">
-                            <button class="qty-btn" style="width:36px; height:44px;" onclick="Storefront.adjustQuickViewQty(-1)">-</button>
+                            <button type="button" class="qty-btn" style="width:36px; height:44px;" onclick="Storefront.adjustQuickViewQty(-1)">-</button>
                             <span class="qty-value" id="qv-qty-display" style="width:40px; font-size:0.95rem;">1</span>
-                            <button class="qty-btn" style="width:36px; height:44px;" onclick="Storefront.adjustQuickViewQty(1)">+</button>
+                            <button type="button" class="qty-btn" style="width:36px; height:44px;" onclick="Storefront.adjustQuickViewQty(1)">+</button>
                         </div>
 
-                        <button class="btn-hero-primary" onclick="Storefront.submitQuickViewAddToCart()" style="flex:1; justify-content:center; padding:12px 20px;">
+                        <button type="button" id="qv-add-cart-btn" class="btn-hero-primary" onclick="Storefront.submitQuickViewAddToCart()" style="flex:1; justify-content:center; padding:12px 20px;">
                             ${window.ICONS?.shoppingBag || ''} Thêm Vào Giỏ
                         </button>
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--border-color); padding-top:10px; margin-top:4px;">
-                        <a href="product-detail.php?id=${product.id}" style="color:var(--text-primary); font-size:0.85rem; font-weight:700; text-decoration:underline;">
-                            Xem trang chi tiết sản phẩm đầy đủ →
+                        <a href="product-detail.php?id=${encodeURIComponent(product.id)}" style="color:var(--text-primary); font-size:0.85rem; font-weight:700; text-decoration:underline;">
+                            Xem chi tiết sản phẩm →
                         </a>
                         <span style="font-size:0.78rem; color:var(--text-muted);">Đổi trả 30 ngày</span>
                     </div>
                 </div>
             `;
 
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
+            this.renderQuickViewVariants();
+        },
+
+        switchQuickViewImage(src, btn) {
+            const img = document.getElementById('qv-main-img');
+            if (img) img.src = src;
+            document.querySelectorAll('.quickview-thumb-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+        },
+
+        renderQuickViewVariants() {
+            const product = this.state.quickViewProduct;
+            if (!product || !window.StoreModel) return;
+
+            const colorsRow = document.getElementById('qv-colors-row');
+            const sizesRow = document.getElementById('qv-sizes-row');
+            const variants = Array.isArray(product.variants) ? product.variants : [];
+
+            if (colorsRow) {
+                colorsRow.innerHTML = (product.colors || []).map(c => {
+                    const colorTotal = variants.length > 0
+                        ? variants.filter(v => v.color === c).reduce((s, v) => s + (Number(v.stock) || 0), 0)
+                        : (Number(product.stock) || 0);
+                    const disabled = colorTotal <= 0;
+                    const active = this.state.selectedColor === c;
+                    return `<button type="button" class="quickview-pill-btn ${active ? 'active' : ''} ${disabled ? 'disabled' : ''}" ${disabled ? 'disabled title="Màu này đã hết hàng"' : ''} onclick="Storefront.selectQuickViewColor('${c.replace(/'/g, "\\'")}')">${c}${disabled ? ' (Hết)' : ''}</button>`;
+                }).join('');
+            }
+
+            if (sizesRow) {
+                sizesRow.innerHTML = (product.sizes || []).map(s => {
+                    const stock = window.StoreModel.getVariantStock(product, s, this.state.selectedColor);
+                    const disabled = stock <= 0;
+                    const active = this.state.selectedSize === s;
+                    return `<button type="button" class="quickview-pill-btn ${active ? 'active' : ''} ${disabled ? 'disabled' : ''}" ${disabled ? 'disabled title="Size này đã hết hàng"' : ''} onclick="Storefront.selectQuickViewSize('${s.replace(/'/g, "\\'")}')">${s}${disabled ? ' (Hết)' : ''}</button>`;
+                }).join('');
+            }
+
+            const currentStock = window.StoreModel.getVariantStock(product, this.state.selectedSize, this.state.selectedColor);
+            const stockEl = document.getElementById('qv-stock-status');
+            const addBtn = document.getElementById('qv-add-cart-btn');
+
+            if (currentStock > 0 && this.state.quickViewQty > currentStock) {
+                this.state.quickViewQty = currentStock;
+            }
+            const qtyDisplay = document.getElementById('qv-qty-display');
+            if (qtyDisplay) qtyDisplay.textContent = this.state.quickViewQty;
+
+            if (stockEl) {
+                stockEl.innerHTML = currentStock > 0
+                    ? `Tình trạng kho (${this.state.selectedSize} / ${this.state.selectedColor}): <strong style="color:var(--store-emerald);">Còn ${currentStock} sản phẩm</strong>`
+                    : `<strong style="color:var(--store-red);">Phân loại ${this.state.selectedSize} / ${this.state.selectedColor} đã hết hàng</strong>`;
+            }
+            if (addBtn) {
+                addBtn.disabled = currentStock <= 0;
+                addBtn.style.opacity = currentStock <= 0 ? '0.45' : '1';
+                addBtn.style.cursor = currentStock <= 0 ? 'not-allowed' : 'pointer';
+            }
         },
 
         closeQuickView() {
@@ -3107,24 +3298,48 @@
             document.body.style.overflow = '';
         },
 
-        selectQuickViewSize(size, btn) {
+        selectQuickViewSize(size) {
+            const product = this.state.quickViewProduct;
+            if (!product || !window.StoreModel) return;
+            const stock = window.StoreModel.getVariantStock(product, size, this.state.selectedColor);
+            if (stock <= 0) return;
             this.state.selectedSize = size;
             const label = document.getElementById('qv-selected-size-label');
             if (label) label.textContent = size;
-            btn.parentElement.querySelectorAll('.quickview-pill-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+            this.renderQuickViewVariants();
         },
 
-        selectQuickViewColor(color, btn) {
+        selectQuickViewColor(color) {
+            const product = this.state.quickViewProduct;
+            if (!product || !window.StoreModel) return;
             this.state.selectedColor = color;
             const label = document.getElementById('qv-selected-color-label');
             if (label) label.textContent = color;
-            btn.parentElement.querySelectorAll('.quickview-pill-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+
+            const currentComboStock = window.StoreModel.getVariantStock(product, this.state.selectedSize, color);
+            if (currentComboStock <= 0) {
+                const availSize = (product.sizes || []).find(s => window.StoreModel.getVariantStock(product, s, color) > 0);
+                if (availSize) {
+                    this.state.selectedSize = availSize;
+                    const sLabel = document.getElementById('qv-selected-size-label');
+                    if (sLabel) sLabel.textContent = availSize;
+                }
+            }
+            this.renderQuickViewVariants();
         },
 
         adjustQuickViewQty(delta) {
-            this.state.quickViewQty = Math.max(1, this.state.quickViewQty + delta);
+            const product = this.state.quickViewProduct;
+            const maxStock = product && window.StoreModel
+                ? window.StoreModel.getVariantStock(product, this.state.selectedSize, this.state.selectedColor)
+                : 99;
+            const next = Math.max(1, this.state.quickViewQty + delta);
+            if (maxStock > 0 && next > maxStock) {
+                this.showToast(`Số lượng tối đa cho phân loại này là ${maxStock}`, 'error');
+                this.state.quickViewQty = maxStock;
+            } else {
+                this.state.quickViewQty = next;
+            }
             const display = document.getElementById('qv-qty-display');
             if (display) display.textContent = this.state.quickViewQty;
         },
@@ -3132,11 +3347,20 @@
         submitQuickViewAddToCart() {
             const product = this.state.quickViewProduct;
             if (!product || !window.StoreModel) return;
+            const maxStock = window.StoreModel.getVariantStock(product, this.state.selectedSize, this.state.selectedColor);
+            if (maxStock <= 0) {
+                this.showToast('Phân loại này đã hết hàng!', 'error');
+                return;
+            }
+            if (this.state.quickViewQty > maxStock) {
+                this.showToast(`Chỉ còn ${maxStock} sản phẩm trong kho!`, 'error');
+                return;
+            }
 
             window.StoreModel.addToCart(
-                product, 
-                this.state.selectedSize, 
-                this.state.selectedColor, 
+                product,
+                this.state.selectedSize,
+                this.state.selectedColor,
                 this.state.quickViewQty
             );
 
@@ -3275,6 +3499,18 @@
             }).catch(() => {
                 this.showToast(`Mã ưu đãi: ${code}`, 'info');
             });
+        },
+
+        toggleCustomerPanel(panelId, forceOpen) {
+            const el = document.getElementById(panelId);
+            if (!el) return;
+            const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : el.hasAttribute('hidden');
+            if (shouldOpen) {
+                el.removeAttribute('hidden');
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                el.setAttribute('hidden', '');
+            }
         },
 
         closeAllModals() {

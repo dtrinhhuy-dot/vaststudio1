@@ -98,8 +98,21 @@ $activeNav = $activeNav ?? '';
                         <span class="action-badge" id="header-cart-badge" style="display: none;">0</span>
                     </button>
 
-                    <a href="auth.php" class="action-icon-btn" id="header-auth-btn" title="Tài khoản thành viên">
-                        <span data-icon="user"></span>
+                    <?php
+                    $sessionCustomer = $_SESSION['customer_user_profile'] ?? null;
+                    $headerInitial = '';
+                    if (is_array($sessionCustomer) && !empty($sessionCustomer['name'])) {
+                        $trimmedName = trim((string)$sessionCustomer['name']);
+                        $firstChar = function_exists('mb_substr') ? mb_substr($trimmedName, 0, 1) : substr($trimmedName, 0, 1);
+                        $headerInitial = function_exists('mb_strtoupper') ? mb_strtoupper($firstChar) : strtoupper($firstChar);
+                    }
+                    ?>
+                    <a href="auth.php" class="action-icon-btn" id="header-auth-btn" title="<?= $headerInitial !== '' ? htmlspecialchars($sessionCustomer['name'] . ' — Tài khoản thành viên', ENT_QUOTES, 'UTF-8') : 'Tài khoản thành viên' ?>">
+                        <?php if ($headerInitial !== ''): ?>
+                            <span class="header-user-avatar"><?= htmlspecialchars($headerInitial, ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php else: ?>
+                            <span data-icon="user"></span>
+                        <?php endif; ?>
                     </a>
 
                     <a href="admin.php" class="action-icon-btn" title="Quản trị Shop" style="margin-left: 4px;">

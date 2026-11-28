@@ -791,12 +791,37 @@
         }
 
         // --- PRODUCT MODEL METHODS ---
+        syncLiveCatalog(catalog) {
+            if (!catalog || typeof catalog !== 'object') return;
+            if (Array.isArray(catalog.products)) {
+                localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(catalog.products));
+            }
+            if (Array.isArray(catalog.collections)) {
+                localStorage.setItem(STORAGE_KEYS.COLLECTIONS, JSON.stringify(catalog.collections));
+            }
+            if (Array.isArray(catalog.coupons)) {
+                localStorage.setItem(STORAGE_KEYS.COUPONS, JSON.stringify(catalog.coupons));
+            }
+            if (catalog.settings && typeof catalog.settings === 'object') {
+                localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(catalog.settings));
+            }
+        }
+
+        getVariantStock(product, size, color) {
+            if (!product) return 0;
+            if (Array.isArray(product.variants) && product.variants.length > 0) {
+                const match = product.variants.find(v => v.size === size && v.color === color);
+                if (match) return Math.max(0, Number(match.stock) || 0);
+            }
+            return Math.max(0, Number(product.stock) || 0);
+        }
+
         getProducts() {
             return JSON.parse(localStorage.getItem(STORAGE_KEYS.PRODUCTS) || '[]');
         }
 
         getProductById(id) {
-            return this.getProducts().find(p => p.id === id);
+            return this.getProducts().find(p => p.id === id || String(p.dbId) === String(id));
         }
 
         saveProduct(productData) {

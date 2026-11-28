@@ -155,14 +155,16 @@ class AdminStoreModel
         if ($this->legacySchema) {
             $sql = $this->legacyOrderSelect() . ' WHERE 1 = 1';
             $params = [];
-            if ($filters['status'] !== 'all') {
+            if ($filters['status'] === 'returns_group') {
+                $sql .= " AND o.current_status IN ('return_requested','return_awaiting_shipment','return_received','return_completed')";
+            } elseif ($filters['status'] !== 'all') {
                 $sql .= ' AND o.current_status = :status';
                 $params['status'] = $filters['status'];
             }
             if ($filters['search'] !== '') {
-                $sql .= ' AND (o.order_code LIKE :order_code_search
-                               OR u.full_name LIKE :customer_name_search
-                               OR u.phone LIKE :customer_phone_search)';
+                $sql .= " AND (o.order_code LIKE :order_code_search
+                               OR COALESCE(NULLIF(o.customer_name, ''), u.full_name) LIKE :customer_name_search
+                               OR COALESCE(NULLIF(o.customer_phone, ''), u.phone) LIKE :customer_phone_search)";
                 $term = '%' . $filters['search'] . '%';
                 $params['order_code_search'] = $term;
                 $params['customer_name_search'] = $term;
@@ -176,7 +178,9 @@ class AdminStoreModel
 
         $sql = 'SELECT o.* FROM orders o WHERE 1 = 1';
         $params = [];
-        if ($filters['status'] !== 'all') {
+        if ($filters['status'] === 'returns_group') {
+            $sql .= " AND o.order_status IN ('return_requested','return_awaiting_shipment','return_received','return_completed')";
+        } elseif ($filters['status'] !== 'all') {
             $sql .= ' AND o.order_status = :status';
             $params['status'] = $filters['status'];
         }
@@ -195,17 +199,27 @@ class AdminStoreModel
 
     public function getOrderCounts(): array
     {
-        $counts = ['all' => 0, 'pending' => 0, 'processing' => 0, 'shipping' => 0, 'completed' => 0, 'cancelled' => 0];
+        require_once __DIR__ . '/OrderWorkflow.php';
+        $counts = ['all' => 0, 'returns_group' => 0];
+        foreach (array_keys(OrderWorkflow::orderStatuses()) as $st) {
+            $counts[$st] = 0;
+        }
+
         $statusColumn = $this->legacySchema ? 'current_status' : 'order_status';
         $rows = $this->db->query(
             'SELECT ' . $statusColumn . ' AS order_status, COUNT(*) AS total
              FROM orders GROUP BY ' . $statusColumn
         )->fetchAll();
         foreach ($rows as $row) {
-            $status = $row['order_status'];
-            if (isset($counts[$status])) {
-                $counts[$status] = (int)$row['total'];
-                $counts['all'] += (int)$row['total'];
+            $status = (string)$row['order_status'];
+            $total = (int)$row['total'];
+            if (!isset($counts[$status])) {
+                $counts[$status] = 0;
+            }
+            $counts[$status] += $total;
+            $counts['all'] += $total;
+            if (str_starts_with($status, 'return_')) {
+                $counts['returns_group'] += $total;
             }
         }
         return $counts;
@@ -214,33 +228,8 @@ class AdminStoreModel
     public function getOrder(string $id): ?array
     {
         if ($this->legacySchema) {
-            $statement = $this->db->prepare($this->legacyOrderSelect() . ' WHERE o.order_code = :id');
-            $statement->execute(['id' => $id]);
-            $order = $statement->fetch();
-            if (!$order) {
-                return null;
-            }
-            $order = $this->mapOrder($order);
-            $items = $this->db->prepare(
-                'SELECT p.name, NULL AS size, NULL AS color, oi.unit_price AS price,
-                        oi.quantity, p.image_url AS image
-                 FROM order_items oi
-                 JOIN orders o ON o.id = oi.order_id
-                 JOIN products p ON p.id = oi.product_id
-                 WHERE o.order_code = :id ORDER BY oi.id'
-            );
-            $items->execute(['id' => $id]);
-            $order['items'] = array_map(static function (array $item): array {
-                return [
-                    'name' => $item['name'],
-                    'size' => '',
-                    'color' => '',
-                    'price' => (float)$item['price'],
-                    'quantity' => (int)$item['quantity'],
-                    'image' => $item['image'] ?? '',
-                ];
-            }, $items->fetchAll());
-            return $order;
+            require_once __DIR__ . '/OrderService.php';
+            return (new OrderService($this->db))->getOrderFullDetail($id);
         }
 
         $statement = $this->db->prepare('SELECT * FROM orders WHERE id = :id');
@@ -255,6 +244,7 @@ class AdminStoreModel
         $order['items'] = array_map(static function (array $item): array {
             return [
                 'name' => $item['product_name'],
+                'sku' => $item['product_sku'] ?? '',
                 'size' => $item['size'] ?? '',
                 'color' => $item['color'] ?? '',
                 'price' => (float)$item['price'],
@@ -262,37 +252,16 @@ class AdminStoreModel
                 'image' => $item['image'] ?? '',
             ];
         }, $items->fetchAll());
+        $order['history'] = [];
+        $order['cancel_requests'] = [];
+        $order['return_requests'] = [];
+        $order['email_logs'] = [];
         return $order;
     }
 
     public function updateOrderStatus(string $id, string $status): bool
     {
-        if ($this->legacySchema) {
-            $statement = $this->db->prepare(
-                'UPDATE orders SET current_status = :status WHERE order_code = :id'
-            );
-            $statement->execute(['status' => $status, 'id' => $id]);
-            if ($statement->rowCount() > 0) {
-                return true;
-            }
-            $check = $this->db->prepare('SELECT 1 FROM orders WHERE order_code = :id');
-            $check->execute(['id' => $id]);
-            return (bool)$check->fetchColumn();
-        }
-
-        $sql = "UPDATE orders SET order_status = :status";
-        if ($status === 'completed') {
-            $sql .= ", payment_status = 'paid'";
-        }
-        $sql .= ' WHERE id = :id';
-        $statement = $this->db->prepare($sql);
-        $statement->execute(['status' => $status, 'id' => $id]);
-        if ($statement->rowCount() > 0) {
-            return true;
-        }
-        $check = $this->db->prepare('SELECT 1 FROM orders WHERE id = :id');
-        $check->execute(['id' => $id]);
-        return (bool)$check->fetchColumn();
+        throw new InvalidArgumentException('Thao tác cập nhật trạng thái tự do đã bị khóa. Vui lòng sử dụng quy trình xử lý từng bước.');
     }
 
     public function getCollections(): array
@@ -482,14 +451,24 @@ class AdminStoreModel
         if ($this->legacySchema) {
             return [
                 'revenue' => (float)$this->db->query(
-                    "SELECT COALESCE(SUM(total_amount), 0) FROM orders
-                     WHERE current_status IN ('completed', 'shipping')
-                       AND YEAR(created_at) = YEAR(CURRENT_DATE())
-                       AND MONTH(created_at) = MONTH(CURRENT_DATE())"
+                    "SELECT COALESCE(SUM(GREATEST(0, total_amount - COALESCE(refunded_amount, 0))), 0)
+                     FROM orders
+                     WHERE current_status = 'completed'
+                       AND YEAR(COALESCE(customer_confirmed_at, created_at)) = YEAR(CURRENT_DATE())
+                       AND MONTH(COALESCE(customer_confirmed_at, created_at)) = MONTH(CURRENT_DATE())"
                 )->fetchColumn(),
                 'orders' => (int)$this->db->query('SELECT COUNT(*) FROM orders')->fetchColumn(),
                 'pending' => (int)$this->db->query(
-                    "SELECT COUNT(*) FROM orders WHERE current_status IN ('pending', 'processing')"
+                    "SELECT COUNT(*) FROM orders WHERE current_status IN ('pending', 'confirmed', 'processing', 'cancel_requested')"
+                )->fetchColumn(),
+                'pending_cancels' => (int)$this->db->query(
+                    "SELECT COUNT(*) FROM order_cancel_requests WHERE status = 'pending'"
+                )->fetchColumn(),
+                'pending_returns' => (int)$this->db->query(
+                    "SELECT COUNT(*) FROM order_return_requests WHERE status IN ('pending_review','approved','awaiting_shipment','received','processing_exchange')"
+                )->fetchColumn(),
+                'failed_emails' => (int)$this->db->query(
+                    "SELECT COUNT(*) FROM email_logs WHERE status = 'failed'"
                 )->fetchColumn(),
                 'inventory' => (int)$this->db->query(
                     'SELECT COALESCE(SUM(stock_quantity), 0) FROM products'
@@ -505,13 +484,16 @@ class AdminStoreModel
 
         $stats = [
             'revenue' => (float)$this->db->query(
-                "SELECT COALESCE(SUM(total), 0) FROM orders
-                 WHERE order_status IN ('completed', 'shipping')
-                   AND YEAR(created_at) = YEAR(CURRENT_DATE())
-                   AND MONTH(created_at) = MONTH(CURRENT_DATE())"
+                "SELECT COALESCE(SUM(GREATEST(0, total - COALESCE(refunded_amount, 0))), 0) FROM orders
+                 WHERE order_status = 'completed'
+                   AND YEAR(COALESCE(customer_confirmed_at, created_at)) = YEAR(CURRENT_DATE())
+                   AND MONTH(COALESCE(customer_confirmed_at, created_at)) = MONTH(CURRENT_DATE())"
             )->fetchColumn(),
             'orders' => (int)$this->db->query('SELECT COUNT(*) FROM orders')->fetchColumn(),
-            'pending' => (int)$this->db->query("SELECT COUNT(*) FROM orders WHERE order_status IN ('pending', 'processing')")->fetchColumn(),
+            'pending' => (int)$this->db->query("SELECT COUNT(*) FROM orders WHERE order_status IN ('pending', 'confirmed', 'processing', 'cancel_requested')")->fetchColumn(),
+            'pending_cancels' => 0,
+            'pending_returns' => 0,
+            'failed_emails' => 0,
             'inventory' => (int)$this->db->query('SELECT COALESCE(SUM(stock), 0) FROM products')->fetchColumn(),
             'low_stock' => (int)$this->db->query('SELECT COUNT(*) FROM products WHERE stock <= 10')->fetchColumn(),
             'customers' => (int)$this->db->query('SELECT COUNT(*) FROM customers')->fetchColumn(),
@@ -526,11 +508,12 @@ class AdminStoreModel
         $statusColumn = $this->legacySchema ? 'current_status' : 'order_status';
         $totalColumn = $this->legacySchema ? 'total_amount' : 'total';
         $statement = $this->db->prepare(
-            "SELECT DATE(created_at) AS sale_date, SUM({$totalColumn}) AS revenue
+            "SELECT DATE(COALESCE(customer_confirmed_at, created_at)) AS sale_date,
+                    SUM(GREATEST(0, {$totalColumn} - COALESCE(refunded_amount, 0))) AS revenue
              FROM orders
-             WHERE created_at >= :start
-               AND {$statusColumn} IN ('completed', 'shipping')
-             GROUP BY DATE(created_at)
+             WHERE COALESCE(customer_confirmed_at, created_at) >= :start
+               AND {$statusColumn} = 'completed'
+             GROUP BY DATE(COALESCE(customer_confirmed_at, created_at))
              ORDER BY sale_date"
         );
         $statement->execute(['start' => $start->format('Y-m-d 00:00:00')]);
@@ -618,6 +601,7 @@ class AdminStoreModel
                  WHERE id = :id'
             );
             $statement->execute($values);
+            $this->syncProductVariants((int)$values['id'], $values['sku'], $this->splitList($input['sizes']), $this->splitList($input['colors']), $values['stock_quantity']);
             return;
         }
 
@@ -631,20 +615,57 @@ class AdminStoreModel
               :sizes_json, :colors_json, :image_url, :description, :status, :is_active, :sales_count)'
         );
         $statement->execute($values);
+        $newId = (int)$this->db->lastInsertId();
+        $this->syncProductVariants($newId, $values['sku'], $this->splitList($input['sizes']), $this->splitList($input['colors']), $values['stock_quantity']);
+    }
+
+    private function syncProductVariants(int $productId, string $sku, array $sizes, array $colors, int $totalStock): void
+    {
+        if ($productId <= 0) {
+            return;
+        }
+        $sizes = $sizes ?: ['Freesize'];
+        $colors = $colors ?: ['Tiêu chuẩn'];
+        $existsStmt = $this->db->prepare('SELECT COUNT(*) FROM product_variants WHERE product_id = :pid');
+        $existsStmt->execute(['pid' => $productId]);
+        $hasExisting = (int)$existsStmt->fetchColumn() > 0;
+
+        $insert = $this->db->prepare(
+            'INSERT IGNORE INTO product_variants (product_id, size, color, sku_variant, stock_quantity)
+             VALUES (:pid, :size, :color, :sku_var, :stock)'
+        );
+        $combos = [];
+        foreach ($sizes as $s) {
+            foreach ($colors as $c) {
+                $combos[] = [$s, $c];
+            }
+        }
+        $count = count($combos);
+        $base = $count > 0 ? intdiv($totalStock, $count) : 0;
+        $rem = $count > 0 ? ($totalStock % $count) : 0;
+        foreach ($combos as $idx => [$s, $c]) {
+            $insert->execute([
+                'pid' => $productId,
+                'size' => $s,
+                'color' => $c,
+                'sku_var' => $sku . '-' . strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', $s)) . '-' . ($idx + 1),
+                'stock' => $hasExisting ? max(1, $base) : ($base + ($idx < $rem ? 1 : 0)),
+            ]);
+        }
     }
 
     private function legacyOrderSelect(): string
     {
         return <<<'SQL'
             SELECT o.order_code AS id,
-                   COALESCE(NULLIF(u.full_name, ''), u.email, 'Khách hàng') AS customer_name,
-                   u.phone AS customer_phone,
-                   u.email AS customer_email,
+                   COALESCE(NULLIF(o.customer_name, ''), NULLIF(u.full_name, ''), u.email, 'Khách hàng') AS customer_name,
+                   COALESCE(NULLIF(o.customer_phone, ''), u.phone) AS customer_phone,
+                   COALESCE(NULLIF(o.customer_email, ''), u.email) AS customer_email,
                    o.shipping_address,
-                   o.total_amount AS subtotal,
-                   0 AS shipping_fee,
-                   0 AS discount,
-                   NULL AS coupon_code,
+                   COALESCE(NULLIF(o.subtotal, 0), o.total_amount) AS subtotal,
+                   COALESCE(o.shipping_fee, 0) AS shipping_fee,
+                   COALESCE(o.discount_amount, 0) AS discount,
+                   o.coupon_code,
                    o.total_amount AS total,
                    (SELECT pm.name
                     FROM payments p
@@ -653,7 +674,8 @@ class AdminStoreModel
                    COALESCE((SELECT p.status FROM payments p
                              WHERE p.order_id = o.id ORDER BY p.id DESC LIMIT 1), 'pending') AS payment_status,
                    o.current_status AS order_status,
-                   NULL AS note,
+                   o.note,
+                   o.cancel_reason,
                    o.created_at
             FROM orders o
             LEFT JOIN users u ON u.id = o.user_id

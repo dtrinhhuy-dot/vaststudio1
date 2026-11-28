@@ -311,6 +311,19 @@ require_once __DIR__ . '/../../../includes/config.php';
     </div>
 
     <!-- Scripts: Models, Icons, Storefront -->
+    <?php
+    $liveCatalogJson = null;
+    try {
+        require_once __DIR__ . '/../../models/OrderService.php';
+        $liveCatalogJson = (new OrderService(getDatabaseConnection()))->getStorefrontCatalog();
+    } catch (Throwable $e) {
+        $liveCatalogJson = null;
+    }
+    ?>
+    <script>
+        window.__VAST_SESSION_USER__ = <?= json_encode($_SESSION['customer_user_profile'] ?? null, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        window.__VAST_LIVE_CATALOG__ = <?= json_encode($liveCatalogJson, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    </script>
     <script src="js/icons.js"></script>
     <script src="js/models/StoreModel.js"></script>
     <script src="js/storefront.js"></script>

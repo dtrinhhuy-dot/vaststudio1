@@ -23,6 +23,28 @@ class FrontController
             return;
         }
 
+        if ($route === 'login' || $route === 'register') {
+            $destination = 'auth.php?tab=' . $route;
+            $redirect = (string)($_GET['redirect'] ?? '');
+            if ($redirect !== '') {
+                $destination .= '&redirect=' . rawurlencode($redirect);
+            }
+            header('Location: ' . $destination, true, 302);
+            return;
+        }
+
+        if ($route === 'api') {
+            require_once __DIR__ . '/ApiController.php';
+            (new ApiController())->handle();
+            return;
+        }
+
+        if ($route === 'auth') {
+            require_once __DIR__ . '/AuthPageController.php';
+            (new AuthPageController())->render();
+            return;
+        }
+
         if ($route === 'admin') {
             require_once __DIR__ . '/AdminPageController.php';
             (new AdminPageController())->render();

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../models/OrderWorkflow.php';
+
 $e = static function ($value): string {
     return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 };
@@ -65,6 +67,8 @@ $icon = static function (string $name, int $size = 18): string {
         'logout' => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
         'arrowRight' => '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
         'rotateCcw' => '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+        'mail' => '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+        'bell' => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
     ];
     $body = $paths[$name] ?? $paths['products'];
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' . $size . '" height="' . $size . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $body . '</svg>';
@@ -84,14 +88,10 @@ $todayLabel = ($weekdays[(int)date('N')] ?? '') . ', ' . date('d/m/Y');
 $maxRevenue = max(array_column($revenueHistory, 'value') ?: [0]);
 $rangeRevenueTotal = array_sum(array_column($revenueHistory, 'value') ?: [0]);
 
-$statusMeta = [
-    'pending' => ['label' => 'Chờ xác nhận', 'badge' => 'badge-warning', 'icon' => 'clock'],
-    'processing' => ['label' => 'Đang đóng gói', 'badge' => 'badge-purple', 'icon' => 'package'],
-    'shipping' => ['label' => 'Đang giao', 'badge' => 'badge-info', 'icon' => 'truck'],
-    'completed' => ['label' => 'Hoàn thành', 'badge' => 'badge-success', 'icon' => 'checkCircle'],
-    'cancelled' => ['label' => 'Đã hủy', 'badge' => 'badge-danger', 'icon' => 'xCircle'],
-];
+$statusMeta = OrderWorkflow::orderStatuses();
 $statusLabels = array_map(static fn (array $meta): string => $meta['label'], $statusMeta);
+$returnStatusMeta = OrderWorkflow::returnStatuses();
+$returnStatusLabels = array_map(static fn (array $meta): string => $meta['label'], $returnStatusMeta);
 
 $paymentLabels = [
     'pending' => 'Chưa thanh toán',
@@ -127,6 +127,7 @@ $navSections = [
         'dashboard' => ['label' => 'Tổng quan', 'icon' => 'dashboard', 'badge' => null],
         'products' => ['label' => 'Sản phẩm', 'icon' => 'products', 'badge' => null],
         'orders' => ['label' => 'Đơn hàng', 'icon' => 'orders', 'badge' => ($stats['pending'] ?? 0) > 0 ? (string)$stats['pending'] : null],
+        'returns' => ['label' => 'Đổi trả & Hoàn tiền', 'icon' => 'rotateCcw', 'badge' => ($stats['pending_returns'] ?? 0) > 0 ? (string)$stats['pending_returns'] : null],
         'collections' => ['label' => 'Bộ sưu tập', 'icon' => 'collections', 'badge' => null],
     ],
     'Khách hàng & Bán hàng' => [
@@ -134,6 +135,7 @@ $navSections = [
         'coupons' => ['label' => 'Khuyến mãi', 'icon' => 'coupons', 'badge' => null],
     ],
     'Hệ thống' => [
+        'emails' => ['label' => 'Nhật ký Email', 'icon' => 'mail', 'badge' => ($stats['failed_emails'] ?? 0) > 0 ? (string)$stats['failed_emails'] : null],
         'settings' => ['label' => 'Cài đặt Shop', 'icon' => 'settings', 'badge' => null],
     ],
 ];
@@ -271,6 +273,22 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
         .order-detail-kicker{font-size:.74rem;color:var(--text-muted);margin-top:2px}
         .order-detail-cell-label{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px}
         .order-detail-note{margin-top:8px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--status-warning-bg);color:var(--status-warning-text);font-size:.78rem;line-height:1.45}
+        .admin-alert--warning{background:var(--status-warning-bg);color:var(--status-warning-text);border-color:color-mix(in srgb,var(--status-warning-text) 28%,transparent)}
+        .admin-alert--info{background:var(--status-info-bg);color:var(--status-info-text);border-color:color-mix(in srgb,var(--status-info-text) 28%,transparent)}
+        .order-workflow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:20px}
+        .order-workflow-box{padding:14px 16px;border:1px solid var(--border-color);border-radius:var(--radius-md);background:var(--bg-subtle);display:grid;gap:6px;align-content:start}
+        .order-timeline{display:grid;gap:10px;padding-left:16px;border-left:2px solid var(--border-color);margin-top:10px}
+        .order-timeline-item{position:relative;display:grid;gap:2px}
+        .order-timeline-dot{position:absolute;left:-21px;top:5px;width:8px;height:8px;border-radius:50%;background:#3b82f6}
+        .return-thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+        .return-thumbs a{display:block;width:96px;height:96px;border-radius:8px;overflow:hidden;border:1px solid var(--border-color)}
+        .return-thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+        .notif-strip{display:grid;gap:8px}
+        .notif-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--border-color);background:var(--bg-subtle)}
+        .notif-row.is-unread{border-color:color-mix(in srgb,var(--status-warning-text) 45%,transparent);background:color-mix(in srgb,var(--status-warning-bg) 45%,var(--bg-surface))}
+        .btn-success-sm{padding:6px 12px;font-size:.78rem;border-radius:var(--radius-sm);border:none;background:#10b981;color:#fff;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+        .btn-danger-sm{padding:6px 12px;font-size:.78rem;border-radius:var(--radius-sm);border:none;background:#ef4444;color:#fff;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+        @media(max-width:960px){.order-workflow-grid{grid-template-columns:1fr}}
         .settings-submit-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:20px;padding:18px 22px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)}
         .form-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
         .form-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
@@ -411,18 +429,69 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                 <?php endif; ?>
 
                 <?php if ($tab === 'dashboard'): ?>
+                    <?php
+                    $unreadAdminNotifs = array_filter($adminNotifications ?? [], static fn (array $n): bool => empty($n['is_read']));
+                    if (($stats['pending_cancels'] ?? 0) > 0 || ($stats['pending_returns'] ?? 0) > 0 || ($stats['failed_emails'] ?? 0) > 0 || $unreadAdminNotifs): ?>
+                        <section class="card">
+                            <div class="card-header">
+                                <div class="admin-inline">
+                                    <span class="nav-icon"><?= $icon('bell', 18) ?></span>
+                                    <div>
+                                        <h2 class="card-title">Thông báo cần xử lý</h2>
+                                        <p class="card-subtitle">Tổng hợp yêu cầu mới từ khách hàng và trạng thái hệ thống</p>
+                                    </div>
+                                </div>
+                                <div class="admin-actions">
+                                    <?php if (($stats['pending_cancels'] ?? 0) > 0): ?>
+                                        <a class="badge badge-danger" style="text-decoration:none" href="admin.php?tab=orders&amp;status=cancel_requested"><?= $e($stats['pending_cancels']) ?> yêu cầu hủy</a>
+                                    <?php endif; ?>
+                                    <?php if (($stats['pending_returns'] ?? 0) > 0): ?>
+                                        <a class="badge badge-warning" style="text-decoration:none" href="admin.php?tab=returns"><?= $e($stats['pending_returns']) ?> yêu cầu đổi trả</a>
+                                    <?php endif; ?>
+                                    <?php if (($stats['failed_emails'] ?? 0) > 0): ?>
+                                        <a class="badge badge-danger" style="text-decoration:none" href="admin.php?tab=emails&amp;email_status=failed"><?= $e($stats['failed_emails']) ?> email lỗi</a>
+                                    <?php endif; ?>
+                                    <?php if ($unreadAdminNotifs): ?>
+                                        <form method="post" style="margin:0">
+                                            <?= $formAction('admin_notifications_read') ?>
+                                            <input type="hidden" name="tab" value="dashboard">
+                                            <button class="btn-secondary btn-xs" type="submit">Đánh dấu đã đọc</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php if (!empty($adminNotifications)): ?>
+                                <div class="card-body">
+                                    <div class="notif-strip">
+                                        <?php foreach (array_slice($adminNotifications, 0, 5) as $notif): ?>
+                                            <div class="notif-row <?= empty($notif['is_read']) ? 'is-unread' : '' ?>">
+                                                <div>
+                                                    <div style="font-weight:700;font-size:.84rem;color:var(--text-primary)"><?= $e($notif['title']) ?></div>
+                                                    <div style="font-size:.78rem;color:var(--text-secondary)"><?= $e($notif['message']) ?> · <span class="admin-muted"><?= $e($formatDateTime($notif['created_at'])) ?></span></div>
+                                                </div>
+                                                <?php if (!empty($notif['link'])): ?>
+                                                    <a class="btn-secondary btn-xs" href="<?= $e($notif['link']) ?>">Kiểm tra</a>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </section>
+                    <?php endif; ?>
+
                     <!-- KPI CARDS -->
                     <section class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-header">
-                                <span class="stat-title">Doanh thu tháng này</span>
+                                <span class="stat-title">Doanh thu thực tế tháng này</span>
                                 <div class="stat-icon-wrap" style="color: var(--status-success-text); background: var(--status-success-bg);">
                                     <?= $icon('dollar', 18) ?>
                                 </div>
                             </div>
                             <div class="stat-value"><?= $money($stats['revenue']) ?></div>
                             <div class="stat-footer">
-                                <span class="admin-muted">Đơn hoàn thành &amp; đang giao</span>
+                                <span class="admin-muted">Chỉ tính đơn Khách đã xác nhận Hoàn tất</span>
                             </div>
                         </div>
 
@@ -476,7 +545,7 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                             <div class="card-header">
                                 <div>
                                     <h2 class="card-title">Doanh thu gần đây</h2>
-                                    <p class="card-subtitle">Thống kê đơn hoàn thành và đang giao trong <?= $e($revenueRange) ?> ngày gần nhất</p>
+                                    <p class="card-subtitle">Chỉ ghi nhận từ đơn đã Hoàn tất (trừ tiền hoàn) trong <?= $e($revenueRange) ?> ngày gần nhất</p>
                                 </div>
                                 <div class="chart-controls">
                                     <a class="chart-btn <?= $revenueRange === 7 ? 'active' : '' ?>" style="text-decoration:none" href="admin.php?tab=dashboard&amp;range=7" <?= $revenueRange === 7 ? 'aria-current="page"' : '' ?>>7 ngày</a>
@@ -490,7 +559,7 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                                 </div>
                                 <?php if ($maxRevenue <= 0): ?>
                                     <div class="admin-chart-empty">
-                                        Chưa có đơn hàng hoàn thành hoặc đang giao trong <?= $e($revenueRange) ?> ngày qua.
+                                        Chưa có đơn hàng Hoàn tất trong <?= $e($revenueRange) ?> ngày qua.
                                     </div>
                                 <?php endif; ?>
                                 <div class="admin-chart-wrap" role="img" aria-label="Biểu đồ doanh thu <?= $e($revenueRange) ?> ngày gần nhất">
@@ -879,10 +948,13 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                     </section>
 
                 <?php elseif ($tab === 'orders'): ?>
+                    <?php
+                    $orderFilterTabs = ['all' => 'Tất cả'] + $statusLabels + ['returns_group' => 'Nhóm đổi trả'];
+                    ?>
                     <section class="card">
                         <div class="card-body" style="display:grid;gap:16px">
                             <nav class="filter-pills" aria-label="Lọc trạng thái đơn hàng">
-                                <?php foreach (['all' => 'Tất cả'] + $statusLabels as $key => $label): ?>
+                                <?php foreach ($orderFilterTabs as $key => $label): ?>
                                     <a class="filter-pill <?= $orderFilters['status'] === $key ? 'active' : '' ?>" href="admin.php?tab=orders&amp;status=<?= $e($key) ?>">
                                         <span><?= $e($label) ?></span>
                                         <span class="badge badge-neutral" style="padding:1px 7px;font-size:.7rem"><?= $e($orderCounts[$key] ?? 0) ?></span>
@@ -911,8 +983,12 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                     </section>
 
                     <?php if ($selectedOrder):
-                        $selMeta = $statusMeta[$selectedOrder['order_status']] ?? ['label' => $selectedOrder['order_status'], 'badge' => 'badge-neutral', 'icon' => 'clock'];
+                        $selStatus = (string)$selectedOrder['order_status'];
+                        $selMeta = $statusMeta[$selStatus] ?? ['label' => $selStatus, 'badge' => 'badge-neutral', 'icon' => 'clock'];
                         $selPayLabel = $paymentLabels[$selectedOrder['payment_status']] ?? $selectedOrder['payment_status'];
+                        $nextStep = OrderWorkflow::nextAdminFulfillmentStep($selStatus);
+                        $canAdminCancel = OrderWorkflow::canAdminDirectCancel($selStatus);
+                        $latestCancelReq = $selectedOrder['cancel_requests'][0] ?? null;
                     ?>
                         <section class="card order-detail-banner">
                             <div class="card-header">
@@ -924,7 +1000,12 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                                             <span><?= $e($selMeta['label']) ?></span>
                                         </span>
                                     </div>
-                                    <p class="order-detail-kicker">Thời gian đặt: <?= $e($formatDateTime($selectedOrder['created_at'])) ?></p>
+                                    <p class="order-detail-kicker">
+                                        Đặt lúc: <?= $e($formatDateTime($selectedOrder['created_at'])) ?>
+                                        <?php if (!empty($selectedOrder['confirmed_at'])): ?> · Xác nhận: <?= $e($formatDateTime($selectedOrder['confirmed_at'])) ?><?php endif; ?>
+                                        <?php if (!empty($selectedOrder['delivered_at'])): ?> · Giao thành công: <?= $e($formatDateTime($selectedOrder['delivered_at'])) ?><?php endif; ?>
+                                        <?php if (!empty($selectedOrder['customer_confirmed_at'])): ?> · Khách xác nhận Hoàn tất: <?= $e($formatDateTime($selectedOrder['customer_confirmed_at'])) ?><?php endif; ?>
+                                    </p>
                                 </div>
                                 <a class="btn-secondary btn-sm" href="admin.php?tab=orders&amp;status=<?= $e($orderFilters['status']) ?>">
                                     <?= $icon('x', 15) ?>
@@ -932,83 +1013,161 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                                 </a>
                             </div>
                             <div class="card-body">
-                                <div class="order-detail-header-card">
-                                    <div>
-                                        <span class="order-detail-cell-label">Khách hàng</span>
-                                        <strong style="font-size:.95rem;color:var(--text-primary)"><?= $e($selectedOrder['customer_name']) ?></strong>
-                                        <p style="font-size:.82rem;color:var(--text-secondary);margin-top:4px"><?= $e($selectedOrder['customer_phone'] ?: '—') ?></p>
-                                        <p style="font-size:.78rem;color:var(--text-muted)"><?= $e($selectedOrder['customer_email'] ?: '—') ?></p>
-                                    </div>
-                                    <div>
-                                        <span class="order-detail-cell-label">Địa chỉ nhận hàng</span>
-                                        <p style="font-size:.84rem;color:var(--text-primary);line-height:1.5"><?= $e($selectedOrder['shipping_address'] ?: '—') ?></p>
-                                        <?php if (!empty($selectedOrder['note'])): ?>
-                                            <p class="order-detail-note"><strong>Ghi chú:</strong> <?= $e($selectedOrder['note']) ?></p>
+                                <div class="order-workflow-grid">
+                                    <div class="order-workflow-box">
+                                        <span class="order-detail-cell-label">Thông tin đơn hàng &amp; thanh toán</span>
+                                        <div style="font-size:.83rem"><strong>Mã đơn:</strong> <span class="mono-id"><?= $e($selectedOrder['id']) ?></span></div>
+                                        <div style="font-size:.83rem"><strong>Phương thức:</strong> <?= $e($selectedOrder['payment_method'] ?: '—') ?></div>
+                                        <div style="font-size:.83rem"><strong>TT thanh toán:</strong> <span class="badge <?= $paymentBadgeClass($selectedOrder['payment_status']) ?>"><?= $e($selPayLabel) ?></span></div>
+                                        <div style="font-size:.83rem"><strong>Vận chuyển:</strong> <?= $e($selectedOrder['shipping_method'] ?: '—') ?></div>
+                                        <div style="font-size:.83rem"><strong>Mã giảm giá:</strong> <?= $e($selectedOrder['coupon_code'] ?: 'Không dùng') ?></div>
+                                        <?php if ((float)($selectedOrder['refunded_amount'] ?? 0) > 0): ?>
+                                            <div style="font-size:.83rem;color:var(--status-danger-text)"><strong>Đã hoàn tiền:</strong> <?= $money($selectedOrder['refunded_amount']) ?></div>
                                         <?php endif; ?>
                                     </div>
-                                    <div>
-                                        <span class="order-detail-cell-label">Thanh toán &amp; Trạng thái</span>
-                                        <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:6px">
-                                            <strong>PTTT:</strong> <?= $e($selectedOrder['payment_method'] ?: '—') ?>
-                                        </p>
-                                        <p style="margin-bottom:10px">
-                                            <span class="badge <?= $paymentBadgeClass($selectedOrder['payment_status']) ?>"><?= $e($selPayLabel) ?></span>
-                                        </p>
-                                        <form method="post" class="admin-inline">
-                                            <?= $formAction('order_status') ?>
-                                            <input type="hidden" name="id" value="<?= $e($selectedOrder['id']) ?>">
-                                            <select class="admin-select-sm" name="status" aria-label="Cập nhật trạng thái đơn">
-                                                <?php foreach ($statusLabels as $key => $label): ?>
-                                                    <option value="<?= $e($key) ?>" <?= $selectedOrder['order_status'] === $key ? 'selected' : '' ?>><?= $e($label) ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                            <button class="btn-primary btn-xs" type="submit">Cập nhật</button>
-                                        </form>
+
+                                    <div class="order-workflow-box">
+                                        <span class="order-detail-cell-label">Thông tin khách hàng</span>
+                                        <strong style="font-size:.95rem;color:var(--text-primary)"><?= $e($selectedOrder['customer_name']) ?></strong>
+                                        <div style="font-size:.82rem;color:var(--text-secondary)">SĐT: <?= $e($selectedOrder['customer_phone'] ?: '—') ?></div>
+                                        <div style="font-size:.8rem;color:var(--text-muted)">Email: <?= $e($selectedOrder['customer_email'] ?: '—') ?></div>
+                                        <div style="font-size:.82rem;color:var(--text-primary);line-height:1.45;margin-top:4px"><strong>Địa chỉ:</strong> <?= $e($selectedOrder['shipping_address'] ?: '—') ?></div>
+                                        <?php if (!empty($selectedOrder['note'])): ?>
+                                            <div class="order-detail-note"><strong>Ghi chú khách hàng:</strong> <?= $e($selectedOrder['note']) ?></div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div class="order-workflow-box">
+                                        <span class="order-detail-cell-label">Điều khiển trạng thái (Từng bước)</span>
+                                        <?php if ($nextStep !== null): ?>
+                                            <form method="post" style="display:grid;gap:8px">
+                                                <?= $formAction('order_advance') ?>
+                                                <input type="hidden" name="id" value="<?= $e($selectedOrder['id']) ?>">
+                                                <input type="hidden" name="target_status" value="<?= $e($nextStep) ?>">
+                                                <label class="admin-field">
+                                                    <span>Ghi chú cập nhật (tùy chọn)</span>
+                                                    <input name="note" placeholder="VD: Đã bàn giao GHTK mã vận đơn...">
+                                                </label>
+                                                <button class="btn-primary btn-sm" type="submit">
+                                                    <?= $icon('arrowRight', 15) ?>
+                                                    <span>Chuyển sang: <?= $e(OrderWorkflow::statusLabel($nextStep)) ?></span>
+                                                </button>
+                                            </form>
+                                        <?php elseif (in_array($selStatus, ['delivered', 'awaiting_confirmation'], true)): ?>
+                                            <div class="admin-alert admin-alert--info" style="padding:10px 12px;font-size:.78rem">
+                                                Admin chỉ cập nhật tối đa đến <strong>Giao hàng thành công</strong> / <strong>Chờ xác nhận nhận hàng</strong>. Khách hàng phải tự xác nhận đã nhận hàng hoặc yêu cầu đổi trả.
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="admin-muted" style="font-size:.8rem">Không có bước chuyển tiếp trực tiếp ở trạng thái hiện tại.</div>
+                                        <?php endif; ?>
+
+                                        <?php if ($canAdminCancel): ?>
+                                            <details style="margin-top:6px">
+                                                <summary style="cursor:pointer;font-size:.8rem;color:var(--status-danger-text);font-weight:600">Hủy đơn hàng (Admin)</summary>
+                                                <form method="post" style="display:grid;gap:8px;margin-top:8px" onsubmit="return confirm('Xác nhận hủy đơn #<?= $e($selectedOrder['id']) ?>?')">
+                                                    <?= $formAction('order_cancel') ?>
+                                                    <input type="hidden" name="id" value="<?= $e($selectedOrder['id']) ?>">
+                                                    <label class="admin-field">
+                                                        <span>Lý do hủy bắt buộc *</span>
+                                                        <textarea name="reason" rows="2" required minlength="5" placeholder="Nhập lý do hủy đơn..."></textarea>
+                                                    </label>
+                                                    <button class="btn-danger-sm" type="submit">Xác nhận hủy đơn</button>
+                                                </form>
+                                            </details>
+                                        <?php endif; ?>
+
+                                        <?php if (!empty($selectedOrder['cancel_reason']) && $selStatus === 'cancelled'): ?>
+                                            <div class="order-detail-note" style="background:var(--status-danger-bg);color:var(--status-danger-text)">
+                                                <strong>Đã hủy:</strong> <?= $e($selectedOrder['cancel_reason']) ?><br>
+                                                <small>Người hủy: <?= $e($selectedOrder['cancelled_by'] ?: '—') ?> · <?= $e($formatDateTime($selectedOrder['cancelled_at'])) ?></small>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
 
-                                <h3 style="font-size:.92rem;font-weight:700;margin-bottom:12px;font-family:var(--font-heading)">
-                                    Sản phẩm trong đơn (<?= $e(count($selectedOrder['items'])) ?>)
-                                </h3>
-                                <div class="order-detail-items-list">
-                                    <?php foreach ($selectedOrder['items'] as $item):
-                                        $variantParts = array_filter([
-                                            $item['size'] !== '' ? 'Size: ' . $item['size'] : '',
-                                            $item['color'] !== '' ? 'Màu: ' . $item['color'] : '',
-                                        ]);
-                                    ?>
-                                        <div class="order-detail-item">
-                                            <div style="display:flex;align-items:center;gap:12px">
-                                                <?php if (!empty($item['image'])): ?>
-                                                    <img src="<?= $e($item['image']) ?>" alt="<?= $e($item['name']) ?>" style="width:46px;height:46px;border-radius:6px;object-fit:cover;border:1px solid var(--border-color)">
-                                                <?php else: ?>
-                                                    <span class="thumb-placeholder"><?= $icon('package', 18) ?></span>
-                                                <?php endif; ?>
-                                                <div>
-                                                    <div style="font-weight:600;font-size:.88rem;color:var(--text-primary)"><?= $e($item['name']) ?></div>
-                                                    <div style="font-size:.76rem;color:var(--text-muted)">
-                                                        <?php if ($variantParts): ?>
-                                                            <?= $e(implode(' · ', $variantParts)) ?> ·
-                                                        <?php endif; ?>
-                                                        Số lượng: <strong>×<?= $e($item['quantity']) ?></strong>
-                                                    </div>
+                                <?php if ($selStatus === 'cancel_requested'): ?>
+                                    <div class="admin-alert admin-alert--warning" style="display:grid;gap:12px;margin-bottom:20px;align-items:stretch">
+                                        <div>
+                                            <strong>Khách hàng đã gửi Yêu cầu hủy đơn hàng đã xác nhận!</strong>
+                                            <?php if ($latestCancelReq): ?>
+                                                <div style="margin-top:4px;font-size:.84rem">
+                                                    <strong>Lý do của khách:</strong> <?= $e($latestCancelReq['reason']) ?>
+                                                    <span class="admin-muted">(lúc <?= $e($formatDateTime($latestCancelReq['created_at'])) ?>)</span>
                                                 </div>
-                                            </div>
-                                            <div style="text-align:right">
-                                                <div class="price-display"><?= $money($item['price'] * $item['quantity']) ?></div>
-                                                <div style="font-size:.74rem;color:var(--text-muted)"><?= $money($item['price']) ?> / sp</div>
-                                            </div>
+                                            <?php endif; ?>
                                         </div>
-                                    <?php endforeach; ?>
+                                        <div class="form-grid-2">
+                                            <form method="post" style="display:grid;gap:8px;background:var(--bg-surface);padding:12px;border-radius:8px;border:1px solid var(--border-color)" onsubmit="return confirm('Đồng ý hủy đơn #<?= $e($selectedOrder['id']) ?>, hoàn tồn kho và hoàn tiền nếu đã thanh toán?')">
+                                                <?= $formAction('cancel_request_resolve') ?>
+                                                <input type="hidden" name="id" value="<?= $e($selectedOrder['id']) ?>">
+                                                <input type="hidden" name="decision" value="approve">
+                                                <label class="admin-field">
+                                                    <span>Đồng ý hủy — Ghi chú phản hồi</span>
+                                                    <input name="note" placeholder="Chấp thuận hủy đơn và hoàn kho...">
+                                                </label>
+                                                <button class="btn-success-sm" type="submit"><?= $icon('check', 14) ?> Đồng ý hủy đơn</button>
+                                            </form>
+
+                                            <form method="post" style="display:grid;gap:8px;background:var(--bg-surface);padding:12px;border-radius:8px;border:1px solid var(--border-color)">
+                                                <?= $formAction('cancel_request_resolve') ?>
+                                                <input type="hidden" name="id" value="<?= $e($selectedOrder['id']) ?>">
+                                                <input type="hidden" name="decision" value="reject">
+                                                <label class="admin-field">
+                                                    <span>Từ chối hủy — Lý do từ chối bắt buộc *</span>
+                                                    <input name="note" required minlength="5" placeholder="VD: Đơn hàng đã đóng gói xong chuẩn bị bàn giao vận chuyển...">
+                                                </label>
+                                                <button class="btn-danger-sm" type="submit"><?= $icon('xCircle', 14) ?> Từ chối hủy &amp; khôi phục đơn</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <h3 style="font-size:.92rem;font-weight:700;margin-bottom:12px;font-family:var(--font-heading)">
+                                    Sản phẩm trong đơn (<?= $e(count($selectedOrder['items'])) ?> — lưu giữ theo thời điểm đặt)
+                                </h3>
+                                <div class="table-responsive" style="margin-bottom:16px">
+                                    <table class="vast-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Sản phẩm</th>
+                                                <th>SKU</th>
+                                                <th>Biến thể</th>
+                                                <th>SL</th>
+                                                <th>Đơn giá</th>
+                                                <th style="text-align:right">Thành tiền</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($selectedOrder['items'] as $item): ?>
+                                                <tr>
+                                                    <td>
+                                                        <div style="display:flex;align-items:center;gap:10px">
+                                                            <?php if (!empty($item['image'])): ?>
+                                                                <img src="<?= $e($item['image']) ?>" alt="<?= $e($item['name']) ?>" style="width:42px;height:42px;border-radius:6px;object-fit:cover;border:1px solid var(--border-color)">
+                                                            <?php else: ?>
+                                                                <span class="thumb-placeholder" style="width:42px;height:42px"><?= $icon('package', 16) ?></span>
+                                                            <?php endif; ?>
+                                                            <strong style="font-size:.84rem"><?= $e($item['name']) ?></strong>
+                                                        </div>
+                                                    </td>
+                                                    <td><span class="mono-id"><?= $e($item['sku'] ?: '—') ?></span></td>
+                                                    <td>Size <?= $e($item['size'] ?: '—') ?> · Màu <?= $e($item['color'] ?: '—') ?></td>
+                                                    <td><strong>×<?= $e($item['quantity']) ?></strong></td>
+                                                    <td><?= $money($item['price']) ?></td>
+                                                    <td style="text-align:right"><strong class="price-display"><?= $money($item['total_price'] ?? ($item['price'] * $item['quantity'])) ?></strong></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
                                 </div>
 
-                                <div class="order-summary-box">
+                                <div class="order-summary-box" style="margin-bottom:20px">
                                     <div class="summary-line">
-                                        <span>Tạm tính</span>
+                                        <span>Tổng tiền hàng (Tạm tính)</span>
                                         <span><?= $money($selectedOrder['subtotal']) ?></span>
                                     </div>
                                     <div class="summary-line">
-                                        <span>Phí giao hàng</span>
+                                        <span>Phí vận chuyển</span>
                                         <span><?= (float)$selectedOrder['shipping_fee'] == 0.0 ? '<strong style="color:var(--status-success-text)">Miễn phí</strong>' : $money($selectedOrder['shipping_fee']) ?></span>
                                     </div>
                                     <?php if ((float)$selectedOrder['discount'] > 0): ?>
@@ -1018,8 +1177,76 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                                         </div>
                                     <?php endif; ?>
                                     <div class="summary-line summary-total">
-                                        <span>Tổng cộng</span>
+                                        <span>Tổng thanh toán</span>
                                         <span><?= $money($selectedOrder['total']) ?></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid-2">
+                                    <div>
+                                        <h3 style="font-size:.9rem;font-weight:700;margin-bottom:8px;font-family:var(--font-heading)">Lịch sử xử lý đơn hàng</h3>
+                                        <div class="order-timeline">
+                                            <?php foreach ($selectedOrder['history'] ?? [] as $h): ?>
+                                                <div class="order-timeline-item">
+                                                    <span class="order-timeline-dot"></span>
+                                                    <div style="font-size:.82rem;font-weight:700;color:var(--text-primary)">
+                                                        <?= $e(OrderWorkflow::statusLabel((string)$h['status'])) ?>
+                                                        <span class="admin-muted" style="font-weight:500;margin-left:6px"><?= $e($formatDateTime($h['created_at'])) ?></span>
+                                                    </div>
+                                                    <div style="font-size:.78rem;color:var(--text-secondary)">
+                                                        <?= $e($h['note'] ?: 'Cập nhật trạng thái') ?> · <em>Người thực hiện: <?= $e($h['resolved_actor'] ?? 'Hệ thống') ?></em>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 style="font-size:.9rem;font-weight:700;margin-bottom:8px;font-family:var(--font-heading)">Nhật ký Email &amp; Đổi trả liên quan</h3>
+                                        <?php if (!empty($selectedOrder['return_requests'])): ?>
+                                            <div style="display:grid;gap:8px;margin-bottom:12px">
+                                                <?php foreach ($selectedOrder['return_requests'] as $ret): ?>
+                                                    <div class="notif-row">
+                                                        <div>
+                                                            <strong class="mono-id"><?= $e($ret['return_code']) ?></strong>
+                                                            <span class="badge badge-warning" style="margin-left:6px"><?= $e(OrderWorkflow::returnStatusLabel((string)$ret['status'])) ?></span>
+                                                            <div style="font-size:.76rem;color:var(--text-secondary);margin-top:4px"><?= $e($ret['reason_text']) ?></div>
+                                                        </div>
+                                                        <a class="btn-secondary btn-xs" href="admin.php?tab=returns&amp;return=<?= rawurlencode($ret['return_code']) ?>">Xử lý đổi trả</a>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <?php if (empty($selectedOrder['email_logs'])): ?>
+                                            <p class="admin-muted" style="font-size:.8rem">Chưa có bản ghi email nào cho đơn hàng này.</p>
+                                        <?php else: ?>
+                                            <div style="display:grid;gap:8px">
+                                                <?php foreach ($selectedOrder['email_logs'] as $elog): ?>
+                                                    <div class="notif-row">
+                                                        <div style="min-width:0">
+                                                            <div style="font-size:.78rem;font-weight:600;color:var(--text-primary);word-break:break-word"><?= $e($elog['subject']) ?></div>
+                                                            <div style="font-size:.73rem;color:var(--text-muted)">
+                                                                Tới: <?= $e($elog['recipient_email']) ?> ·
+                                                                <span class="badge <?= $elog['status'] === 'sent' ? 'badge-success' : 'badge-danger' ?>"><?= $e($elog['status']) ?></span>
+                                                            </div>
+                                                            <?php if (!empty($elog['error_message'])): ?>
+                                                                <div style="font-size:.72rem;color:var(--status-danger-text);margin-top:2px"><?= $e($elog['error_message']) ?></div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <?php if ($elog['status'] !== 'sent'): ?>
+                                                            <form method="post" style="margin:0">
+                                                                <?= $formAction('email_retry') ?>
+                                                                <input type="hidden" name="email_log_id" value="<?= $e($elog['id']) ?>">
+                                                                <input type="hidden" name="return_tab" value="orders">
+                                                                <input type="hidden" name="return_order" value="<?= $e($selectedOrder['id']) ?>">
+                                                                <button class="btn-secondary btn-xs" type="submit">Gửi lại</button>
+                                                            </form>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -1035,7 +1262,7 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                         <div class="card-header">
                             <div>
                                 <h2 class="card-title">Danh sách đơn hàng</h2>
-                                <p class="card-subtitle">Hiển thị <?= $e(count($orders)) ?> đơn hàng</p>
+                                <p class="card-subtitle">Hiển thị <?= $e(count($orders)) ?> đơn hàng · Tuân thủ chuyển trạng thái từng bước</p>
                             </div>
                         </div>
                         <?php if (!$orders): ?>
@@ -1055,13 +1282,15 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                                             <th>Khách hàng</th>
                                             <th>Tổng tiền</th>
                                             <th>Thanh toán</th>
-                                            <th>Cập nhật trạng thái</th>
+                                            <th>Trạng thái &amp; Bước tiếp</th>
                                             <th style="text-align:right">Chi tiết</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($orders as $order):
                                             $payLabel = $paymentLabels[$order['payment_status']] ?? $order['payment_status'];
+                                            $rowMeta = $statusMeta[$order['order_status']] ?? ['label' => $order['order_status'], 'badge' => 'badge-neutral', 'icon' => 'clock'];
+                                            $rowNext = OrderWorkflow::nextAdminFulfillmentStep((string)$order['order_status']);
                                             $isSelected = $selectedOrder && $selectedOrder['id'] === $order['id'];
                                         ?>
                                             <tr <?= $isSelected ? 'style="background:var(--bg-surface-hover)"' : '' ?>>
@@ -1079,21 +1308,25 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                                                     <span class="badge <?= $paymentBadgeClass($order['payment_status']) ?>"><?= $e($payLabel) ?></span>
                                                 </td>
                                                 <td>
-                                                    <form method="post" class="admin-inline">
-                                                        <?= $formAction('order_status') ?>
-                                                        <input type="hidden" name="id" value="<?= $e($order['id']) ?>">
-                                                        <select class="admin-select-sm" name="status" aria-label="Trạng thái đơn <?= $e($order['id']) ?>">
-                                                            <?php foreach ($statusLabels as $key => $label): ?>
-                                                                <option value="<?= $e($key) ?>" <?= $order['order_status'] === $key ? 'selected' : '' ?>><?= $e($label) ?></option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                        <button class="btn-secondary btn-xs" type="submit">Lưu</button>
-                                                    </form>
+                                                    <div class="admin-actions">
+                                                        <span class="badge <?= $rowMeta['badge'] ?>">
+                                                            <?= $icon($rowMeta['icon'], 13) ?>
+                                                            <span><?= $e($rowMeta['label']) ?></span>
+                                                        </span>
+                                                        <?php if ($rowNext !== null): ?>
+                                                            <form method="post" style="margin:0">
+                                                                <?= $formAction('order_advance') ?>
+                                                                <input type="hidden" name="id" value="<?= $e($order['id']) ?>">
+                                                                <input type="hidden" name="target_status" value="<?= $e($rowNext) ?>">
+                                                                <button class="btn-primary btn-xs" type="submit" title="Chuyển từng bước">→ <?= $e(OrderWorkflow::statusLabel($rowNext)) ?></button>
+                                                            </form>
+                                                        <?php endif; ?>
+                                                    </div>
                                                 </td>
                                                 <td style="text-align:right">
                                                     <a class="btn-secondary btn-xs" href="admin.php?tab=orders&amp;status=<?= $e($orderFilters['status']) ?>&amp;order=<?= rawurlencode($order['id']) ?>">
                                                         <?= $icon('eye', 14) ?>
-                                                        <span>Xem</span>
+                                                        <span>Chi tiết</span>
                                                     </a>
                                                 </td>
                                             </tr>
@@ -1501,6 +1734,303 @@ $hasCustomerFilters = $customerFilters['search'] !== '' || $customerFilters['tie
                             </button>
                         </div>
                     </form>
+
+                <?php elseif ($tab === 'returns'): ?>
+                    <section class="card">
+                        <div class="card-body">
+                            <nav class="filter-pills" aria-label="Lọc trạng thái đổi trả">
+                                <?php foreach (['all' => 'Tất cả'] + $returnStatusLabels as $rKey => $rLabel): ?>
+                                    <a class="filter-pill <?= ($returnFilter ?? 'all') === $rKey ? 'active' : '' ?>" href="admin.php?tab=returns&amp;return_status=<?= $e($rKey) ?>">
+                                        <span><?= $e($rLabel) ?></span>
+                                    </a>
+                                <?php endforeach; ?>
+                            </nav>
+                        </div>
+                    </section>
+
+                    <?php if ($selectedReturn):
+                        $retMeta = $returnStatusMeta[$selectedReturn['status']] ?? ['label' => $selectedReturn['status'], 'badge' => 'badge-neutral'];
+                    ?>
+                        <section class="card order-detail-banner">
+                            <div class="card-header">
+                                <div>
+                                    <div class="admin-inline">
+                                        <h2 class="card-title">Phiếu đổi trả #<?= $e($selectedReturn['return_code']) ?></h2>
+                                        <span class="badge <?= $retMeta['badge'] ?>"><?= $e($retMeta['label']) ?></span>
+                                    </div>
+                                    <p class="order-detail-kicker">
+                                        Đơn hàng: <a class="mono-id" href="admin.php?tab=orders&amp;order=<?= rawurlencode($selectedReturn['order_code']) ?>"><?= $e($selectedReturn['order_code']) ?></a>
+                                        · Khách hàng: <strong><?= $e($selectedReturn['customer_name']) ?></strong> (<?= $e($selectedReturn['customer_phone']) ?>)
+                                        · Gửi lúc: <?= $e($formatDateTime($selectedReturn['created_at'])) ?>
+                                    </p>
+                                </div>
+                                <a class="btn-secondary btn-sm" href="admin.php?tab=returns&amp;return_status=<?= $e($returnFilter ?? 'all') ?>">Đóng</a>
+                            </div>
+                            <div class="card-body" style="display:grid;gap:18px">
+                                <div class="form-grid-2">
+                                    <div class="order-workflow-box">
+                                        <span class="order-detail-cell-label">Lý do &amp; Mô tả từ khách hàng</span>
+                                        <div><strong>Lý do:</strong> <?= $e($selectedReturn['reason_text']) ?></div>
+                                        <div style="font-size:.84rem;color:var(--text-secondary);line-height:1.5"><?= $e($selectedReturn['description']) ?></div>
+                                        <?php if (!empty($selectedReturn['images'])): ?>
+                                            <div style="margin-top:8px">
+                                                <strong style="font-size:.8rem">Hình ảnh khách gửi (<?= $e(count($selectedReturn['images'])) ?>):</strong>
+                                                <div class="return-thumbs">
+                                                    <?php foreach ($selectedReturn['images'] as $img): ?>
+                                                        <a href="<?= $e($img['file_path']) ?>" target="_blank" rel="noopener" title="<?= $e($img['original_name']) ?>">
+                                                            <img src="<?= $e($img['file_path']) ?>" alt="Ảnh đổi trả">
+                                                        </a>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div class="order-workflow-box">
+                                        <span class="order-detail-cell-label">Xử lý yêu cầu đổi trả</span>
+                                        <?php if ($selectedReturn['status'] === 'pending_review'): ?>
+                                            <form method="post" style="display:grid;gap:8px;padding-bottom:12px;border-bottom:1px dashed var(--border-color)">
+                                                <?= $formAction('return_approve') ?>
+                                                <input type="hidden" name="return_code" value="<?= $e($selectedReturn['return_code']) ?>">
+                                                <label class="admin-field">
+                                                    <span>Chấp thuận — Hướng dẫn khách gửi hàng về</span>
+                                                    <textarea name="note" rows="2" placeholder="VD: Vui lòng đóng gói nguyên tem gửi về VAST STUDIO (24 Hàng Bông, Hoàn Kiếm, HN)..."></textarea>
+                                                </label>
+                                                <button class="btn-success-sm" type="submit"><?= $icon('check', 15) ?> Chấp thuận đổi trả</button>
+                                            </form>
+
+                                            <form method="post" style="display:grid;gap:8px">
+                                                <?= $formAction('return_reject') ?>
+                                                <input type="hidden" name="return_code" value="<?= $e($selectedReturn['return_code']) ?>">
+                                                <label class="admin-field">
+                                                    <span>Từ chối — Lý do từ chối bắt buộc *</span>
+                                                    <textarea name="reject_reason" rows="2" required minlength="5" placeholder="Nhập lý do từ chối yêu cầu đổi trả..."></textarea>
+                                                </label>
+                                                <button class="btn-danger-sm" type="submit"><?= $icon('xCircle', 15) ?> Từ chối đổi trả</button>
+                                            </form>
+                                        <?php elseif (in_array($selectedReturn['status'], ['awaiting_shipment', 'approved'], true)): ?>
+                                            <form method="post" style="display:grid;gap:10px">
+                                                <?= $formAction('return_confirm_received') ?>
+                                                <input type="hidden" name="return_code" value="<?= $e($selectedReturn['return_code']) ?>">
+                                                <label class="admin-field">
+                                                    <span>Tình trạng hàng khi shop nhận được</span>
+                                                    <textarea name="condition_note" rows="2" placeholder="VD: Đã nhận kiện hàng đổi trả, sản phẩm còn nguyên tem mác..."></textarea>
+                                                </label>
+                                                <button class="btn-primary btn-sm" type="submit"><?= $icon('package', 15) ?> Xác nhận đã nhận hàng đổi trả</button>
+                                            </form>
+                                        <?php elseif (in_array($selectedReturn['status'], ['received', 'processing_exchange'], true)): ?>
+                                            <form method="post" style="display:grid;gap:10px" onsubmit="return confirm('Xác nhận hoàn tất xử lý phiếu đổi trả <?= $e($selectedReturn['return_code']) ?>?')">
+                                                <?= $formAction('return_complete') ?>
+                                                <input type="hidden" name="return_code" value="<?= $e($selectedReturn['return_code']) ?>">
+                                                <label class="admin-field">
+                                                    <span>Hình thức hoàn tất *</span>
+                                                    <select name="resolution_type">
+                                                        <option value="exchange">Đổi sản phẩm mới (Gửi hàng đổi cho khách)</option>
+                                                        <option value="refund">Hoàn tiền (Tính lại doanh thu đơn hàng)</option>
+                                                    </select>
+                                                </label>
+                                                <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;cursor:pointer">
+                                                    <input type="checkbox" name="restock_approved" value="1">
+                                                    <span>Nhập lại số lượng sản phẩm vào tồn kho sau khi kiểm tra đạt chuẩn</span>
+                                                </label>
+                                                <label class="admin-field">
+                                                    <span>Ghi chú hoàn tất</span>
+                                                    <textarea name="note" rows="2" placeholder="Ghi chú mã vận đơn mới hoặc thông tin hoàn tiền..."></textarea>
+                                                </label>
+                                                <button class="btn-success-sm" type="submit"><?= $icon('checkCircle', 15) ?> Hoàn tất xử lý đổi trả</button>
+                                            </form>
+                                        <?php else: ?>
+                                            <div style="font-size:.83rem"><strong>Hướng xử lý:</strong> <?= $e($selectedReturn['resolution_type'] ?: '—') ?></div>
+                                            <?php if ((float)($selectedReturn['refund_amount'] ?? 0) > 0): ?>
+                                                <div style="font-size:.83rem"><strong>Số tiền hoàn:</strong> <?= $money($selectedReturn['refund_amount']) ?></div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($selectedReturn['reject_reason'])): ?>
+                                                <div class="order-detail-note" style="background:var(--status-danger-bg);color:var(--status-danger-text)"><strong>Lý do từ chối:</strong> <?= $e($selectedReturn['reject_reason']) ?></div>
+                                            <?php elseif (!empty($selectedReturn['admin_note'])): ?>
+                                                <div style="font-size:.83rem"><strong>Ghi chú Admin:</strong> <?= $e($selectedReturn['admin_note']) ?></div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 style="font-size:.9rem;font-weight:700;margin-bottom:8px;font-family:var(--font-heading)">Sản phẩm yêu cầu đổi trả</h3>
+                                    <div class="table-responsive">
+                                        <table class="vast-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Sản phẩm</th>
+                                                    <th>SKU</th>
+                                                    <th>Biến thể</th>
+                                                    <th>SL đổi trả</th>
+                                                    <th style="text-align:right">Đơn giá</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($selectedReturn['items'] ?? [] as $ri): ?>
+                                                    <tr>
+                                                        <td><strong><?= $e($ri['product_name']) ?></strong></td>
+                                                        <td><span class="mono-id"><?= $e($ri['product_sku'] ?: '—') ?></span></td>
+                                                        <td>Size <?= $e($ri['size'] ?: '—') ?> · Màu <?= $e($ri['color'] ?: '—') ?></td>
+                                                        <td><strong>×<?= $e($ri['quantity']) ?></strong></td>
+                                                        <td style="text-align:right"><?= $money($ri['unit_price']) ?></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    <?php endif; ?>
+
+                    <section class="card">
+                        <div class="card-header">
+                            <div>
+                                <h2 class="card-title">Danh sách yêu cầu đổi trả</h2>
+                                <p class="card-subtitle">Tổng cộng <?= $e(count($returnRequests ?? [])) ?> phiếu đổi trả</p>
+                            </div>
+                        </div>
+                        <?php if (empty($returnRequests)): ?>
+                            <div class="empty-state">
+                                <?= $icon('rotateCcw', 28) ?>
+                                <p>Chưa có yêu cầu đổi trả nào.</p>
+                            </div>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="vast-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mã đổi trả</th>
+                                            <th>Đơn hàng</th>
+                                            <th>Khách hàng</th>
+                                            <th>Lý do</th>
+                                            <th>Ảnh</th>
+                                            <th>Trạng thái</th>
+                                            <th style="text-align:right">Xử lý</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($returnRequests as $req):
+                                            $rm = $returnStatusMeta[$req['status']] ?? ['label' => $req['status'], 'badge' => 'badge-neutral'];
+                                        ?>
+                                            <tr>
+                                                <td>
+                                                    <a class="mono-id" href="admin.php?tab=returns&amp;return=<?= rawurlencode($req['return_code']) ?>"><?= $e($req['return_code']) ?></a>
+                                                    <div style="font-size:.73rem;color:var(--text-muted);margin-top:4px"><?= $e($formatDateTime($req['created_at'])) ?></div>
+                                                </td>
+                                                <td><a class="mono-id" href="admin.php?tab=orders&amp;order=<?= rawurlencode($req['order_code']) ?>"><?= $e($req['order_code']) ?></a></td>
+                                                <td>
+                                                    <div class="product-meta-title"><?= $e($req['customer_name']) ?></div>
+                                                    <div style="font-size:.75rem;color:var(--text-muted)"><?= $e($req['customer_phone']) ?></div>
+                                                </td>
+                                                <td><?= $e($req['reason_text']) ?></td>
+                                                <td><?= $e(count($req['images'] ?? [])) ?> ảnh</td>
+                                                <td><span class="badge <?= $rm['badge'] ?>"><?= $e($rm['label']) ?></span></td>
+                                                <td style="text-align:right">
+                                                    <a class="btn-secondary btn-xs" href="admin.php?tab=returns&amp;return=<?= rawurlencode($req['return_code']) ?>">Chi tiết</a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </section>
+
+                <?php elseif ($tab === 'emails'): ?>
+                    <section class="card">
+                        <div class="card-body" style="display:grid;gap:14px">
+                            <?php if (!empty($smtpConfigured)): ?>
+                                <div class="admin-alert admin-alert--success">
+                                    <span class="admin-alert-icon"><?= $icon('checkCircle', 18) ?></span>
+                                    <span><strong>SMTP đã cấu hình:</strong> Hệ thống đang gửi email tự động qua máy chủ SMTP.</span>
+                                </div>
+                            <?php else: ?>
+                                <div class="admin-alert admin-alert--warning">
+                                    <span class="admin-alert-icon"><?= $icon('alert', 18) ?></span>
+                                    <span>
+                                        <strong>Chưa cấu hình SMTP thật:</strong> Vui lòng tạo file <code>includes/smtp.local.php</code> (từ mẫu <code>includes/smtp.example.php</code>) hoặc thiết lập biến môi trường <code>SMTP_HOST</code>, <code>SMTP_USERNAME</code>, <code>SMTP_PASSWORD</code> để gửi email thật. Mọi email vẫn được lưu tại đây để gửi lại sau khi cấu hình.
+                                    </span>
+                                </div>
+                            <?php endif; ?>
+
+                            <nav class="filter-pills" aria-label="Lọc nhật ký email">
+                                <?php foreach (['all' => 'Tất cả', 'sent' => 'Đã gửi', 'failed' => 'Thất bại', 'pending' => 'Đang chờ'] as $ek => $el): ?>
+                                    <a class="filter-pill <?= ($emailFilter ?? 'all') === $ek ? 'active' : '' ?>" href="admin.php?tab=emails&amp;email_status=<?= $e($ek) ?>">
+                                        <span><?= $e($el) ?></span>
+                                    </a>
+                                <?php endforeach; ?>
+                            </nav>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <div class="card-header">
+                            <div>
+                                <h2 class="card-title">Nhật ký gửi Email SMTP</h2>
+                                <p class="card-subtitle">Hiển thị tối đa <?= $e(count($emailLogs ?? [])) ?> bản ghi gần nhất (chống gửi trùng khi F5 và hỗ trợ gửi lại khi lỗi)</p>
+                            </div>
+                        </div>
+                        <?php if (empty($emailLogs)): ?>
+                            <div class="empty-state">
+                                <?= $icon('mail', 28) ?>
+                                <p>Chưa có bản ghi email nào.</p>
+                            </div>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="vast-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Đơn hàng</th>
+                                            <th>Người nhận &amp; Tiêu đề</th>
+                                            <th>Mẫu</th>
+                                            <th>Trạng thái &amp; Lỗi</th>
+                                            <th>Số lần</th>
+                                            <th style="text-align:right">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($emailLogs as $elog): ?>
+                                            <tr>
+                                                <td>
+                                                    <?php if (!empty($elog['order_code'])): ?>
+                                                        <a class="mono-id" href="admin.php?tab=orders&amp;order=<?= rawurlencode($elog['order_code']) ?>"><?= $e($elog['order_code']) ?></a>
+                                                    <?php else: ?>
+                                                        <span class="admin-muted">—</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <div style="font-weight:600;font-size:.84rem"><?= $e($elog['subject']) ?></div>
+                                                    <div style="font-size:.75rem;color:var(--text-muted)"><?= $e($elog['recipient_email']) ?> · <?= $e($formatDateTime($elog['sent_at'] ?: $elog['last_attempt_at'])) ?></div>
+                                                </td>
+                                                <td><span class="mono-id"><?= $e($elog['template_code'] ?: 'email') ?></span></td>
+                                                <td>
+                                                    <span class="badge <?= $elog['status'] === 'sent' ? 'badge-success' : ($elog['status'] === 'failed' ? 'badge-danger' : 'badge-warning') ?>"><?= $e($elog['status']) ?></span>
+                                                    <?php if (!empty($elog['error_message'])): ?>
+                                                        <div style="font-size:.73rem;color:var(--status-danger-text);margin-top:4px;max-width:260px"><?= $e($elog['error_message']) ?></div>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?= $e($elog['attempts'] ?? 0) ?></td>
+                                                <td style="text-align:right">
+                                                    <?php if ($elog['status'] !== 'sent'): ?>
+                                                        <form method="post" style="margin:0">
+                                                            <?= $formAction('email_retry') ?>
+                                                            <input type="hidden" name="email_log_id" value="<?= $e($elog['id']) ?>">
+                                                            <input type="hidden" name="return_tab" value="emails">
+                                                            <button class="btn-primary btn-xs" type="submit">Gửi lại</button>
+                                                        </form>
+                                                    <?php else: ?>
+                                                        <span class="admin-muted" style="font-size:.76rem">Đã gửi</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </section>
                 <?php endif; ?>
             </div>
         </main>

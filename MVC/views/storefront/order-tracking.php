@@ -35,11 +35,11 @@ include __DIR__ . '/../partials/header.php';
                 </form>
 
                 <div class="tracking-demo-pills">
-                    <span>Mẫu thử nhanh:</span>
-                    <button type="button" class="demo-pill-btn" onclick="Storefront.quickTrackDemo('VAST-9825')">VAST-9825 (Chờ xử lý)</button>
-                    <button type="button" class="demo-pill-btn" onclick="Storefront.quickTrackDemo('VAST-9824')">VAST-9824 (Đang đóng gói)</button>
-                    <button type="button" class="demo-pill-btn" onclick="Storefront.quickTrackDemo('VAST-9823')">VAST-9823 (Đang giao)</button>
-                    <button type="button" class="demo-pill-btn" onclick="Storefront.quickTrackDemo('VAST-9822')">VAST-9822 (Giao thành công)</button>
+                    <span>Tra cứu nhanh đơn mẫu:</span>
+                    <button type="button" class="demo-pill-btn" onclick="Storefront.quickTrackDemo('VAST-9825')">VAST-9825</button>
+                    <button type="button" class="demo-pill-btn" onclick="Storefront.quickTrackDemo('VAST-9824')">VAST-9824</button>
+                    <button type="button" class="demo-pill-btn" onclick="Storefront.quickTrackDemo('VAST-9823')">VAST-9823</button>
+                    <button type="button" class="demo-pill-btn" onclick="Storefront.quickTrackDemo('VAST-9822')">VAST-9822</button>
                 </div>
             </div>
 

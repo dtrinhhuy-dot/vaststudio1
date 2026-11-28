@@ -1,14 +1,17 @@
 <?php
 
 require_once __DIR__ . '/../models/AdminStoreModel.php';
+require_once __DIR__ . '/../models/OrderService.php';
 
 class AdminController
 {
     private AdminStoreModel $model;
+    private OrderService $orderService;
 
-    public function __construct(AdminStoreModel $model)
+    public function __construct(AdminStoreModel $model, ?OrderService $orderService = null)
     {
         $this->model = $model;
+        $this->orderService = $orderService ?? new OrderService(getDatabaseConnection());
     }
 
     public function handleRequest(): array
@@ -44,7 +47,7 @@ class AdminController
         }
 
         $tab = $_GET['tab'] ?? 'dashboard';
-        $tabs = ['dashboard', 'products', 'orders', 'collections', 'customers', 'coupons', 'settings'];
+        $tabs = ['dashboard', 'products', 'orders', 'returns', 'collections', 'customers', 'coupons', 'emails', 'settings'];
         if (!in_array($tab, $tabs, true)) {
             $tab = 'dashboard';
         }
@@ -63,7 +66,11 @@ class AdminController
             'search' => trim((string)($_GET['customer_search'] ?? '')),
             'tier' => (string)($_GET['tier'] ?? 'all'),
         ];
+        $returnFilter = (string)($_GET['return_status'] ?? 'all');
+        $emailFilter = (string)($_GET['email_status'] ?? 'all');
         $revenueRange = ($_GET['range'] ?? '7') === '30' ? 30 : 7;
+
+        $mailer = new Mailer(getDatabaseConnection());
 
         return [
             'loginRequired' => false,
@@ -78,6 +85,8 @@ class AdminController
             'productFilters' => $productFilters,
             'orderFilters' => $orderFilters,
             'customerFilters' => $customerFilters,
+            'returnFilter' => $returnFilter,
+            'emailFilter' => $emailFilter,
             'stats' => $this->model->getDashboardStats(),
             'revenueRange' => $revenueRange,
             'revenueHistory' => $this->model->getRevenueHistory($revenueRange),
@@ -86,6 +95,11 @@ class AdminController
             'orders' => $this->model->getOrders($orderFilters),
             'recentOrders' => $this->model->getRecentOrders(),
             'selectedOrder' => isset($_GET['order']) ? $this->model->getOrder((string)$_GET['order']) : null,
+            'returnRequests' => $this->orderService->getReturnRequests($returnFilter),
+            'selectedReturn' => isset($_GET['return']) ? $this->orderService->getReturnRequestByCode((string)$_GET['return']) : null,
+            'emailLogs' => $this->orderService->getEmailLogs($emailFilter, 80),
+            'smtpConfigured' => $mailer->isConfigured(),
+            'adminNotifications' => $this->orderService->getNotifications('admin', null, 12),
             'collections' => $this->model->getCollections(),
             'customers' => $this->model->getCustomers($customerFilters),
             'coupons' => $this->model->getCoupons(),
@@ -132,6 +146,9 @@ class AdminController
             throw new InvalidArgumentException('Vui lòng đăng nhập tài khoản quản trị.');
         }
 
+        $adminId = isset($_SESSION['admin_user_id']) ? (int)$_SESSION['admin_user_id'] : null;
+        $adminName = (string)($_SESSION['admin_user_name'] ?? 'Quản trị viên cục bộ');
+
         switch ($action) {
             case 'product_save':
                 $this->requireFields(['name', 'sku', 'category', 'price', 'stock', 'sizes', 'colors']);
@@ -151,16 +168,83 @@ class AdminController
                 $this->redirect('products', 'Đã xóa sản phẩm.');
                 break;
 
+            case 'order_advance':
             case 'order_status':
                 $id = trim((string)($_POST['id'] ?? ''));
-                $status = (string)($_POST['status'] ?? '');
-                if ($id === '' || !in_array($status, ['pending', 'processing', 'shipping', 'completed', 'cancelled'], true)) {
-                    throw new InvalidArgumentException('Trạng thái đơn hàng không hợp lệ.');
+                $targetStatus = trim((string)($_POST['status'] ?? $_POST['target_status'] ?? ''));
+                $note = trim((string)($_POST['note'] ?? ''));
+                if ($id === '' || $targetStatus === '') {
+                    throw new InvalidArgumentException('Thiếu thông tin đơn hàng hoặc trạng thái cần cập nhật.');
                 }
-                if (!$this->model->updateOrderStatus($id, $status)) {
-                    throw new InvalidArgumentException('Không tìm thấy đơn hàng cần cập nhật.');
+                $this->orderService->adminAdvanceOrder($id, $targetStatus, $adminId, $adminName, $note);
+                $this->redirectUrl('admin.php?tab=orders&order=' . rawurlencode($id), 'Đã cập nhật trạng thái đơn #' . $id . ' thành "' . OrderWorkflow::statusLabel($targetStatus) . '".');
+                break;
+
+            case 'order_cancel':
+                $id = trim((string)($_POST['id'] ?? ''));
+                $reason = trim((string)($_POST['reason'] ?? ''));
+                $this->orderService->adminCancelOrder($id, $reason, $adminId, $adminName);
+                $this->redirectUrl('admin.php?tab=orders&order=' . rawurlencode($id), 'Đã hủy đơn hàng #' . $id . '.');
+                break;
+
+            case 'cancel_request_resolve':
+                $id = trim((string)($_POST['id'] ?? ''));
+                $decision = trim((string)($_POST['decision'] ?? ''));
+                $note = trim((string)($_POST['note'] ?? ''));
+                $this->orderService->adminResolveCancelRequest($id, $decision, $adminId, $adminName, $note);
+                $msg = $decision === 'approve'
+                    ? "Đã đồng ý hủy đơn #{$id}, hoàn kho và cập nhật thông tin hoàn tiền."
+                    : "Đã từ chối yêu cầu hủy đơn #{$id} và gửi lý do cho khách hàng.";
+                $this->redirectUrl('admin.php?tab=orders&order=' . rawurlencode($id), $msg);
+                break;
+
+            case 'return_approve':
+                $returnCode = trim((string)($_POST['return_code'] ?? ''));
+                $note = trim((string)($_POST['note'] ?? ''));
+                $this->orderService->adminApproveReturn($returnCode, $adminId, $adminName, $note);
+                $this->redirectUrl('admin.php?tab=returns&return=' . rawurlencode($returnCode), "Đã chấp thuận yêu cầu đổi trả {$returnCode} và gửi hướng dẫn gửi hàng cho khách.");
+                break;
+
+            case 'return_reject':
+                $returnCode = trim((string)($_POST['return_code'] ?? ''));
+                $reason = trim((string)($_POST['reject_reason'] ?? ''));
+                $this->orderService->adminRejectReturn($returnCode, $reason, $adminId, $adminName);
+                $this->redirectUrl('admin.php?tab=returns&return=' . rawurlencode($returnCode), "Đã từ chối yêu cầu đổi trả {$returnCode}.");
+                break;
+
+            case 'return_confirm_received':
+                $returnCode = trim((string)($_POST['return_code'] ?? ''));
+                $note = trim((string)($_POST['condition_note'] ?? ''));
+                $this->orderService->adminConfirmReturnReceived($returnCode, $adminId, $adminName, $note);
+                $this->redirectUrl('admin.php?tab=returns&return=' . rawurlencode($returnCode), "Đã xác nhận nhận hàng đổi trả cho {$returnCode}.");
+                break;
+
+            case 'return_complete':
+                $returnCode = trim((string)($_POST['return_code'] ?? ''));
+                $resolutionType = trim((string)($_POST['resolution_type'] ?? 'exchange'));
+                $restock = !empty($_POST['restock_approved']);
+                $note = trim((string)($_POST['note'] ?? ''));
+                $this->orderService->adminCompleteReturn($returnCode, $resolutionType, $restock, $adminId, $adminName, $note);
+                $this->redirectUrl('admin.php?tab=returns&return=' . rawurlencode($returnCode), "Đã hoàn tất xử lý đổi trả {$returnCode}.");
+                break;
+
+            case 'email_retry':
+                $logId = (int)($_POST['email_log_id'] ?? 0);
+                if ($logId <= 0) {
+                    throw new InvalidArgumentException('Không xác định được bản ghi email.');
                 }
-                $this->redirect('orders', 'Đã cập nhật trạng thái đơn hàng.');
+                $res = $this->orderService->retryEmailLog($logId);
+                $returnTab = (string)($_POST['return_tab'] ?? 'emails');
+                $returnOrder = trim((string)($_POST['return_order'] ?? ''));
+                $dest = 'admin.php?tab=' . rawurlencode($returnTab) . ($returnOrder !== '' ? '&order=' . rawurlencode($returnOrder) : '');
+                if ($res['sent']) {
+                    $this->redirectUrl($dest, 'Đã gửi lại email thành công!');
+                }
+                throw new InvalidArgumentException('Gửi lại email thất bại: ' . ($res['error'] ?? 'Lỗi không xác định'));
+
+            case 'admin_notifications_read':
+                $this->orderService->markNotificationsRead('admin', null);
+                $this->redirect((string)($_POST['tab'] ?? 'dashboard'), 'Đã đánh dấu tất cả thông báo là đã đọc.');
                 break;
 
             case 'collection_save':
@@ -245,18 +329,25 @@ class AdminController
             'dashboard' => 'Tổng quan kinh doanh',
             'products' => 'Quản lý Sản phẩm',
             'orders' => 'Quản lý Đơn hàng',
+            'returns' => 'Quản lý Đổi Trả & Hoàn Tiền',
             'collections' => 'Bộ sưu tập thời trang',
             'customers' => 'Danh sách Khách hàng',
             'coupons' => 'Mã Giảm Giá & Khuyến Mãi',
+            'emails' => 'Nhật ký Gửi Email (SMTP)',
             'settings' => 'Cài đặt Cửa hàng',
         ];
-        return $titles[$tab];
+        return $titles[$tab] ?? 'Tổng quan kinh doanh';
     }
 
     private function redirect(string $tab, string $message): void
     {
+        $this->redirectUrl('admin.php?tab=' . rawurlencode($tab), $message);
+    }
+
+    private function redirectUrl(string $url, string $message): void
+    {
         $_SESSION['admin_message'] = $message;
-        header('Location: admin.php?tab=' . rawurlencode($tab), true, 303);
+        header('Location: ' . $url, true, 303);
         exit;
     }
 }
